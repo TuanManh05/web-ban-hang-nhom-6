@@ -40,3 +40,5 @@ models/       thao tác dữ liệu
 uploads/      ảnh do người dùng tải lên
 views/        giao diện PHP
 ```
+
+Xem [sơ đồ ERD](docs/database-erd.md) để biết quan hệ giữa các bảng.
