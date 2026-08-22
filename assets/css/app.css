@@ -1,0 +1,12 @@
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #f8fafc;
+}
+
+main { flex: 1; }
+
+.hero {
+    background: radial-gradient(circle at top, #dbeafe, transparent 55%);
+}
