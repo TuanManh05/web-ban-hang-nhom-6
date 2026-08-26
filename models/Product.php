@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 final class Product
 {
-    / Lấy danh sách sản phẩm còn bán, kèm ảnh đại diện (is_primary = 1) nếu có/
-  
+    /**
+     * Lấy danh sách sản phẩm còn bán, kèm ảnh đại diện (is_primary = 1) nếu có.
+     */
     public static function featured(int $limit = 8): array
     {
         $pdo = database();
