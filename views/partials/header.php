@@ -12,6 +12,26 @@
 <nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
     <div class="container">
         <a class="navbar-brand fw-bold" href="index.php">Nhóm 6 Shop</a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#mainNavbar" aria-controls="mainNavbar"
+                aria-expanded="false" aria-label="Mở menu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNavbar">
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.php">Trang chủ</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="views/products.php">Sản phẩm</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="views/cart.php">Giỏ hàng</a>
+                </li>
+            </ul>
+        </div>
     </div>
 </nav>
 <main>
