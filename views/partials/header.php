@@ -15,3 +15,20 @@
     </div>
 </nav>
 <main>
+<?php
+// Tính tổng số lượng sản phẩm trong giỏ hàng
+$cartCount = 0;
+if (isset($_SESSION['cart'])) {
+    foreach ($_SESSION['cart'] as $item) {
+        $cartCount += $item['quantity'];
+    }
+}
+?>
+
+<!-- Nút giỏ hàng trên giao diện -->
+<div class="d-flex align-items-center">
+    <a href="index.php?page=cart" class="btn btn-outline-dark">
+        <i class="bi bi-cart"></i> Giỏ hàng 
+        <span class="badge bg-danger rounded-pill" id="cart-count"><?= $cartCount ?></span>
+    </a>
+</div>
