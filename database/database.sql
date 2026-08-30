@@ -83,3 +83,30 @@ CREATE TABLE order_items (
 INSERT INTO categories (name, slug) VALUES
     ('Thời trang', 'thoi-trang'),
     ('Phụ kiện', 'phu-kien');
+    -- Dữ liệu mẫu Admin & Customer
+INSERT INTO users (name, email, password, role) VALUES 
+('Admin System', 'admin@gmail.com', '$2y$10$YourHashHere', 'admin'),
+('Test Customer', 'customer@gmail.com', '$2y$10$YourHashHere', 'customer');
+
+-- Dữ liệu mẫu Danh mục
+INSERT INTO categories (id, name) VALUES 
+(1, 'Áo nam'), (2, 'Quần nam'), (3, 'Phụ kiện');
+
+-- Dữ liệu mẫu 15 Sản phẩm
+INSERT INTO products (name, price, category_id) VALUES 
+('Sản phẩm 01', 100000, 1),
+('Sản phẩm 02', 120000, 1),
+('Sản phẩm 03', 150000, 1),
+('Sản phẩm 04', 200000, 1),
+('Sản phẩm 05', 250000, 1),
+('Sản phẩm 06', 110000, 2),
+('Sản phẩm 07', 130000, 2),
+('Sản phẩm 08', 170000, 2),
+('Sản phẩm 09', 210000, 2),
+('Sản phẩm 10', 260000, 2),
+('Sản phẩm 11', 50000, 3),
+('Sản phẩm 12', 70000, 3),
+('Sản phẩm 13', 90000, 3),
+('Sản phẩm 14', 180000, 3),
+('Sản phẩm 15', 300000, 3);
+
