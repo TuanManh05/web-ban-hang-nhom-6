@@ -13,13 +13,13 @@
         <?php if (!empty($products)): ?>
             <?php foreach ($products as $product): ?>
                 <div class="col-6 col-md-4 col-lg-3">
-                    <a href="views/product-detail.php?id=<?= urlencode((string) $product['id']) ?>"
+                    <a href="<?= $basePath ?>/views/product-detail.php?id=<?= urlencode((string) $product['id']) ?>"
                        class="text-decoration-none text-dark">
                         <div class="card product-card h-100">
                             <img
                                 src="<?= $product['image_path']
-                                    ? htmlspecialchars('uploads/' . $product['image_path'], ENT_QUOTES, 'UTF-8')
-                                    : 'assets/img/product-placeholder.png' ?>"
+                                    ? htmlspecialchars($basePath . '/uploads/' . $product['image_path'], ENT_QUOTES, 'UTF-8')
+                                    : $basePath . '/assets/img/product-placeholder.png' ?>"
                                 class="card-img-top"
                                 alt="<?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?>">
                             <div class="card-body">
