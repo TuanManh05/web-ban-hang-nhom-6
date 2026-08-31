@@ -1,112 +1,63 @@
-CREATE DATABASE IF NOT EXISTS web_ban_hang_nhom_6
-    CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE web_ban_hang_nhom_6;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) NULL,
-    address VARCHAR(255) NULL,
-    role ENUM('admin', 'customer') NOT NULL DEFAULT 'customer',
-    status TINYINT(1) NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT CHECK(role IN ('admin', 'customer')) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE categories (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(120) NOT NULL,
-    slug VARCHAR(150) NOT NULL UNIQUE,
-    status TINYINT(1) NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE products (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    category_id BIGINT UNSIGNED NOT NULL,
-    name VARCHAR(180) NOT NULL,
-    slug VARCHAR(200) NOT NULL UNIQUE,
-    description TEXT NULL,
-    price DECIMAL(15,2) UNSIGNED NOT NULL,
-    stock INT UNSIGNED NOT NULL DEFAULT 0,
-    status TINYINT(1) NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_products_category FOREIGN KEY (category_id)
-        REFERENCES categories(id) ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    price REAL NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
 
-CREATE TABLE product_images (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    product_id BIGINT UNSIGNED NOT NULL,
-    image_path VARCHAR(255) NOT NULL,
-    is_primary TINYINT(1) NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_product_images_product FOREIGN KEY (product_id)
-        REFERENCES products(id) ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
-
-CREATE TABLE orders (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT UNSIGNED NULL,
-    customer_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) NOT NULL,
-    address VARCHAR(255) NOT NULL,
-    note VARCHAR(500) NULL,
-    total_amount DECIMAL(15,2) UNSIGNED NOT NULL,
-    status ENUM('pending', 'confirmed', 'shipping', 'completed', 'cancelled')
-        NOT NULL DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_orders_user FOREIGN KEY (user_id)
-        REFERENCES users(id) ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-CREATE TABLE order_items (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED NOT NULL,
-    product_id BIGINT UNSIGNED NULL,
-    product_name VARCHAR(180) NOT NULL,
-    price DECIMAL(15,2) UNSIGNED NOT NULL,
-    quantity INT UNSIGNED NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_order_items_order FOREIGN KEY (order_id)
-        REFERENCES orders(id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_order_items_product FOREIGN KEY (product_id)
-        REFERENCES products(id) ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-INSERT INTO categories (name, slug) VALUES
-    ('Thời trang', 'thoi-trang'),
-    ('Phụ kiện', 'phu-kien');
-    -- Dữ liệu mẫu Admin & Customer
+-- Admin: admin@gmail.com / 11111111 | Customer: customer@gmail.com / 88888888
 INSERT INTO users (name, email, password, role) VALUES 
-('Admin System', 'admin@gmail.com', '$2y$10$YourHashHere', 'admin'),
-('Test Customer', 'customer@gmail.com', '$2y$10$YourHashHere', 'customer');
+('System Admin', 'admin@gmail.com', '$2y$10$wK1k6994Gk66b3N8X5D4v.y1pXbVfK7QG.Jg9v0k5N8Q5D4v.y1pK', 'admin'),
+('John Customer', 'customer@gmail.com', '$2y$10$C8.Rk4vP28H6L/e6vT.pL.nS2xZ5x7x9v9v9v9v9v9v9v9v9v9v9v', 'customer');
 
--- Dữ liệu mẫu Danh mục
-INSERT INTO categories (id, name) VALUES 
-(1, 'Áo nam'), (2, 'Quần nam'), (3, 'Phụ kiện');
+-- Categories (Slug chuẩn, không trùng ID)
+INSERT INTO categories (id, name, slug) VALUES 
+(1, 'Điện thoại', 'dien-thoai'),
+(2, 'Laptop', 'laptop'),
+(3, 'Phụ kiện', 'phu-kien'),
+(4, 'Máy ảnh', 'may-anh');
 
--- Dữ liệu mẫu 15 Sản phẩm
-INSERT INTO products (name, price, category_id) VALUES 
-('Sản phẩm 01', 100000, 1),
-('Sản phẩm 02', 120000, 1),
-('Sản phẩm 03', 150000, 1),
-('Sản phẩm 04', 200000, 1),
-('Sản phẩm 05', 250000, 1),
-('Sản phẩm 06', 110000, 2),
-('Sản phẩm 07', 130000, 2),
-('Sản phẩm 08', 170000, 2),
-('Sản phẩm 09', 210000, 2),
-('Sản phẩm 10', 260000, 2),
-('Sản phẩm 11', 50000, 3),
-('Sản phẩm 12', 70000, 3),
-('Sản phẩm 13', 90000, 3),
-('Sản phẩm 14', 180000, 3),
-('Sản phẩm 15', 300000, 3);
+-- 15 Products liên kết đúng category_id và có slug
+INSERT INTO products (category_id, name, slug, price, description) VALUES 
+(1, 'iPhone 15 Pro Max', 'iphone-15-pro-max', 30000000, 'Điện thoại Apple cao cấp'),
+(1, 'Samsung Galaxy S24 Ultra', 'samsung-galaxy-s24-ultra', 29000000, 'Flagship Samsung'),
+(1, 'Xiaomi 14 Ultra', 'xiaomi-14-ultra', 25000000, 'Điện thoại nhiếp ảnh Xiaomi'),
+(1, 'Google Pixel 8 Pro', 'google-pixel-8-pro', 20000000, 'Điện thoại Google'),
 
+(2, 'MacBook Pro 14 M3', 'macbook-pro-14-m3', 40000000, 'Laptop Apple chip M3'),
+(2, 'Dell XPS 13', 'dell-xps-13', 35000000, 'Laptop mỏng nhẹ Windows'),
+(2, 'ThinkPad X1 Carbon', 'thinkpad-x1-carbon', 38000000, 'Laptop doanh nhân Lenovo'),
+(2, 'Asus ROG Zephyrus G14', 'asus-rog-zephyrus-g14', 33000000, 'Laptop gaming mỏng nhẹ'),
+
+(3, 'Tai nghe AirPods Pro 2', 'tai-nghe-airpods-pro-2', 5500000, 'Tai nghe chống ồn Apple'),
+(3, 'Sạc Anker 65W GaN', 'sac-anker-65w-gan', 1200000, 'Củ sạc nhanh đa năng'),
+(3, 'Chuột Logitech MX Master 3S', 'chuot-logitech-mx-master-3s', 2500000, 'Chuột công thái học'),
+(3, 'Bàn phím cơ Keychron K2', 'ban-phim-co-keychron-k2', 1800000, 'Bàn phím cơ không dây'),
+
+(4, 'Sony FX3', 'sony-fx3', 90000000, 'Máy ảnh Cinema Sony'),
+(4, 'Canon EOS R6 Mark II', 'canon-eos-r6-mark-ii', 60000000, 'Máy ảnh mirrorless Canon'),
+(4, 'Fujifilm X-T5', 'fujifilm-x-t5', 42000000, 'Máy ảnh Fujifilm chuẩn màu');
