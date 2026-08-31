@@ -63,6 +63,12 @@
                     </div>
                 </div>
 
+                <!-- Thêm trường Mô tả sản phẩm (Description) -->
+                <div class="mb-3">
+                    <label for="description" class="form-label fw-bold">Mô tả sản phẩm</label>
+                    <textarea class="form-control" id="description" name="description" rows="4" placeholder="Nhập chi tiết mô tả về sản phẩm..."><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                </div>
+
                 <div class="mb-3">
                     <label for="status" class="form-label fw-bold">Trạng thái</label>
                     <select class="form-select" id="status" name="status">

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chỉnh sửa sản phẩm</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 </head>
 <body class="bg-light py-4">
 <div class="container" style="max-width: 700px;">
@@ -64,6 +65,12 @@
                         <label for="stock" class="form-label fw-bold">Số lượng (Stock) <span class="text-danger">*</span></label>
                         <input type="number" class="form-control" id="stock" name="stock" value="<?= htmlspecialchars($_POST['stock'] ?? $product['stock']) ?>" min="0" required>
                     </div>
+                </div>
+
+                <!-- Thêm trường Mô tả sản phẩm (Description) -->
+                <div class="mb-3">
+                    <label for="description" class="form-label fw-bold">Mô tả sản phẩm</label>
+                    <textarea class="form-control" id="description" name="description" rows="4" placeholder="Nhập chi tiết mô tả sản phẩm..."><?= htmlspecialchars($_POST['description'] ?? $product['description'] ?? '') ?></textarea>
                 </div>
 
                 <div class="mb-3">

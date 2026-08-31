@@ -12,8 +12,7 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div class="d-flex align-items-center gap-3">
-        <a href="index.php?action=admin" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Quay lại Admin</a>
-            </a>
+            <a href="index.php?action=admin" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Quay lại Admin</a>
             <h2 class="h3 mb-0 text-gray-800">Danh sách sản phẩm</h2>
         </div>
         <a href="index.php?action=product-create" class="btn btn-primary">
@@ -45,6 +44,7 @@
                         <tr>
                             <th class="text-center" style="width: 60px;">ID</th>
                             <th>Tên sản phẩm</th>
+                            <th style="max-width: 250px;">Mô tả</th>
                             <th>Danh mục</th>
                             <th>Giá</th>
                             <th class="text-center">Số lượng</th>
@@ -60,6 +60,12 @@
                                     <td>
                                         <div class="fw-bold"><?= htmlspecialchars($p['name']) ?></div>
                                         <small class="text-muted">Slug: <?= htmlspecialchars($p['slug']) ?></small>
+                                    </td>
+                                    <!-- Cột Mô tả -->
+                                    <td style="max-width: 250px;">
+                                        <small class="text-muted">
+                                            <?= !empty($p['description']) ? nl2br(htmlspecialchars($p['description'])) : '<em class="text-secondary">Chưa có mô tả</em>' ?>
+                                        </small>
                                     </td>
                                     <td>
                                         <span class="badge bg-info text-dark">
@@ -87,17 +93,20 @@
                                             <a href="index.php?action=product-edit&id=<?= $p['id'] ?>" class="btn btn-warning btn-sm">
                                                 <i class="bi bi-pencil-square"></i> Sửa
                                             </a>
-                                            <!-- Nút Xóa -->
-                                            <a href="index.php?action=product-delete&id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?');" title="Xóa">
-                                                <i class="bi bi-trash"></i> Xóa
-                                            </a>
+                                            <!-- Nút Xóa (Đã chuyển từ GET sang Form POST) -->
+                                            <form action="index.php?action=product-delete" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?');">
+                                                <input type="hidden" name="id" value="<?= $p['id'] ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                                    <i class="bi bi-trash"></i> Xóa
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">Chưa có sản phẩm nào.</td>
+                                <td colspan="8" class="text-center text-muted py-4">Chưa có sản phẩm nào.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

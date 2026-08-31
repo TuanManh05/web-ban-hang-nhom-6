@@ -5,7 +5,31 @@ class ProductController {
     private $productModel;
 
     public function __construct($pdo) {
+        // 1. Khởi tạo session nếu chưa khởi chạy
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        // 2. Kiểm tra đăng nhập và phân quyền Admin (SHOP-9 & SHOP-10)
+        $this->checkAdminAuth();
+
         $this->productModel = new ProductModel($pdo);
+    }
+
+    /**
+     * Middleware kiểm tra quyền Admin
+     */
+    private function checkAdminAuth() {
+        if (!isset($_SESSION['user'])) {
+            header("Location: index.php?action=login&error=" . urlencode("Vui lòng đăng nhập để tiếp tục!"));
+            exit;
+        }
+
+        $userRole = $_SESSION['user']['role'] ?? '';
+        if ($userRole !== 'admin' && $userRole != 1) {
+            header("Location: index.php?error=" . urlencode("Bạn không có quyền truy cập trang quản trị!"));
+            exit;
+        }
     }
 
     private function createSlug($str) {
@@ -60,6 +84,7 @@ class ProductController {
             $category_id = (int)($_POST['category_id'] ?? 0);
             $price       = $_POST['price'] ?? '';
             $stock       = $_POST['stock'] ?? '';
+            $description = trim($_POST['description'] ?? '');
             $status      = isset($_POST['status']) ? (int)$_POST['status'] : 1;
 
             $errors = [];
@@ -67,9 +92,17 @@ class ProductController {
             if (empty($name)) {
                 $errors[] = "Tên sản phẩm không được để trống.";
             }
+
+            // Kiểm tra danh mục hợp lệ và tồn tại trong DB
             if ($category_id <= 0) {
                 $errors[] = "Vui lòng chọn danh mục hợp lệ.";
+            } else {
+                $categoryExists = $this->productModel->getCategoryById($category_id);
+                if (!$categoryExists) {
+                    $errors[] = "Danh mục được chọn không tồn tại trong hệ thống.";
+                }
             }
+
             if (!is_numeric($price) || (float)$price <= 0) {
                 $errors[] = "Giá sản phẩm phải là số và lớn hơn 0.";
             }
@@ -81,7 +114,7 @@ class ProductController {
 
             if (!empty($errors)) {
                 $categories = $this->productModel->getAllCategories();
-                require_once __DIR__ . '/../views/admin/create.php';
+                require_once __DIR__ . '/../views/admin/products/create.php';
                 return;
             }
 
@@ -93,11 +126,12 @@ class ProductController {
                 'slug'        => $slug,
                 'price'       => (float)$price,
                 'stock'       => (int)$stock,
+                'description' => $description,
                 'status'      => $status
             ];
 
             $this->productModel->insertProduct($data);
-            header("Location: index.php?action=product-index&msg=Thêm sản phẩm thành công!");
+            header("Location: index.php?action=product-index&msg=" . urlencode("Thêm sản phẩm thành công!"));
             exit;
         }
     }
@@ -110,7 +144,7 @@ class ProductController {
         $product = $this->productModel->getProductById($id);
 
         if (!$product) {
-            header("Location: index.php?action=product-index&error=Sản phẩm không tồn tại!");
+            header("Location: index.php?action=product-index&error=" . urlencode("Sản phẩm không tồn tại!"));
             exit;
         }
 
@@ -127,7 +161,7 @@ class ProductController {
             $product     = $this->productModel->getProductById($id);
 
             if (!$product) {
-                header("Location: index.php?action=product-index&error=Sản phẩm không tồn tại!");
+                header("Location: index.php?action=product-index&error=" . urlencode("Sản phẩm không tồn tại!"));
                 exit;
             }
 
@@ -135,6 +169,7 @@ class ProductController {
             $category_id = (int)($_POST['category_id'] ?? 0);
             $price       = $_POST['price'] ?? '';
             $stock       = $_POST['stock'] ?? '';
+            $description = trim($_POST['description'] ?? '');
             $status      = isset($_POST['status']) ? (int)$_POST['status'] : 1;
 
             $errors = [];
@@ -142,9 +177,17 @@ class ProductController {
             if (empty($name)) {
                 $errors[] = "Tên sản phẩm không được để trống.";
             }
+
+            // Kiểm tra danh mục hợp lệ và tồn tại trong DB
             if ($category_id <= 0) {
                 $errors[] = "Vui lòng chọn danh mục hợp lệ.";
+            } else {
+                $categoryExists = $this->productModel->getCategoryById($category_id);
+                if (!$categoryExists) {
+                    $errors[] = "Danh mục được chọn không tồn tại trong hệ thống.";
+                }
             }
+
             if (!is_numeric($price) || (float)$price <= 0) {
                 $errors[] = "Giá sản phẩm phải là số và lớn hơn 0.";
             }
@@ -156,7 +199,7 @@ class ProductController {
 
             if (!empty($errors)) {
                 $categories = $this->productModel->getAllCategories();
-                require_once __DIR__ . '/../views/admin/edit.php';
+                require_once __DIR__ . '/../views/admin/products/edit.php';
                 return;
             }
 
@@ -170,24 +213,34 @@ class ProductController {
                 'slug'        => $slug,
                 'price'       => (float)$price,
                 'stock'       => (int)$stock,
+                'description' => $description,
                 'status'      => $status
             ];
 
             $this->productModel->updateProduct($id, $data);
-            header("Location: index.php?action=product-index&msg=Cập nhật sản phẩm thành công!");
+            header("Location: index.php?action=product-index&msg=" . urlencode("Cập nhật sản phẩm thành công!"));
             exit;
         }
     }
 
     /**
-     * Xóa sản phẩm
+     * Xóa sản phẩm (Chỉ nhận POST)
      */
     public function delete() {
-        $id = (int)($_GET['id'] ?? 0);
-        if ($id > 0) {
-            $this->productModel->deleteProduct($id);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = (int)($_POST['id'] ?? 0);
+            
+            if ($id > 0) {
+                $this->productModel->deleteProduct($id);
+                header("Location: index.php?action=product-index&msg=" . urlencode("Xóa sản phẩm thành công!"));
+                exit;
+            } else {
+                header("Location: index.php?action=product-index&error=" . urlencode("ID sản phẩm không hợp lệ!"));
+                exit;
+            }
         }
-        header("Location: index.php?action=product-index&msg=Xóa sản phẩm thành công!");
+
+        header("Location: index.php?action=product-index&error=" . urlencode("Phương thức không được hỗ trợ!"));
         exit;
     }
 }
