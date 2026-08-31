@@ -1,9 +1,6 @@
-<?php require __DIR__ . '/partials/header.php'; ?>
-<section class="hero py-5">
-    <div class="container py-5 text-center">
-        <span class="badge text-bg-primary mb-3">PHP + MySQL + XAMPP</span>
-        <h1 class="display-5 fw-bold">Website bán hàng cơ bản</h1>
-        <p class="lead text-secondary">Khung dự án đã sẵn sàng để sáu thành viên cùng phát triển.</p>
-    </div>
-</section>
-<?php require __DIR__ . '/partials/footer.php'; ?>
+<form action="index.php?action=add_cart" method="POST">
+    <!-- CHỈ gửi ID sản phẩm, không gửi Giá/Tên -->
+    <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
+    <input type="hidden" name="quantity" value="1"> <!-- Mặc định thêm 1 -->
+    <button type="submit" class="btn btn-primary w-100">Thêm vào giỏ</button>
+</form>
