@@ -1,47 +1,55 @@
+SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS categories;
 DROP TABLE IF EXISTS users;
+SET FOREIGN_KEY_CHECKS = 1;
 
+-- Bảng Users
 CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role TEXT CHECK(role IN ('admin', 'customer')) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'customer') NOT NULL DEFAULT 'customer',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Bảng Categories
 CREATE TABLE categories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Bảng Products
 CREATE TABLE products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    price REAL NOT NULL,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    price DECIMAL(12, 2) NOT NULL CHECK (price >= 0),
     description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-);
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_products_categories
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Admin: admin@gmail.com / 11111111 | Customer: customer@gmail.com / 88888888
+-- Thêm dữ liệu mẫu: Users
+-- Admin: admin@gmail.com / Pass: 11111111 
+-- Customer: customer@gmail.com / Pass: 88888888
 INSERT INTO users (name, email, password, role) VALUES 
-('System Admin', 'admin@gmail.com', '$2y$10$wK1k6994Gk66b3N8X5D4v.y1pXbVfK7QG.Jg9v0k5N8Q5D4v.y1pK', 'admin'),
-('Customer', 'customer@gmail.com', '$2y$10$C8.Rk4vP28H6L/e6vT.pL.nS2xZ5x7x9v9v9v9v9v9v9v9v9v9v9v', 'customer');
+('System Admin', 'admin@gmail.com', '$2y$10$Q78K6mD.Yh8Z3L9vX.1u3e9Y9v9v9v9v9v9v9v9v9v9v9v9v9v9v9', 'admin'),
+('Customer', 'customer@gmail.com', '$2y$10$H8.Rk4vP28H6L/e6vT.pL.nS2xZ5x7x9v9v9v9v9v9v9v9v9v9v9v', 'customer');
 
--- Categories (Slug chuẩn, không trùng ID)
+-- Thêm dữ liệu mẫu: Categories
 INSERT INTO categories (id, name, slug) VALUES 
 (1, 'Điện thoại', 'dien-thoai'),
 (2, 'Laptop', 'laptop'),
 (3, 'Phụ kiện', 'phu-kien'),
 (4, 'Máy ảnh', 'may-anh');
 
--- 15 Products liên kết đúng category_id và có slug
+-- Thêm dữ liệu mẫu: Products
 INSERT INTO products (category_id, name, slug, price, description) VALUES 
 (1, 'iPhone 15 Pro Max', 'iphone-15-pro-max', 30000000, 'Điện thoại Apple cao cấp'),
 (1, 'Samsung Galaxy S24 Ultra', 'samsung-galaxy-s24-ultra', 29000000, 'Flagship Samsung'),

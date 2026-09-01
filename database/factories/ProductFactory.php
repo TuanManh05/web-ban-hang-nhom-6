@@ -6,7 +6,10 @@ class ProductFactory {
 
     public static function definition(int $categoryId): array {
         $name = self::$brands[array_rand(self::$brands)] . ' ' . self::$types[array_rand(self::$types)] . ' ' . rand(100, 999);
-        $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name))) . '-' . rand(1000, 9999);
+        
+        // Tạo slug chuẩn và nối chuỗi định danh duy nhất (uniqid) để đảm bảo không trùng lặp
+        $baseSlug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name)));
+        $slug = $baseSlug . '-' . substr(md5(uniqid(mt_rand(), true)), 0, 6);
 
         return [
             'category_id' => $categoryId,

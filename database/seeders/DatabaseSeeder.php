@@ -6,46 +6,69 @@ class DatabaseSeeder {
     private $pdo;
 
     public function __construct() {
-        $this->pdo = new PDO('sqlite:' . __DIR__ . '/../database.sqlite');
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $host = '127.0.0.1';
+        $port = '3306';
+        $db   = 'web-ban-hang-nhom-6';
+        $user = 'root';
+        $pass = '';
+        $charset = 'utf8mb4';
+
+        $options = [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ];
+
+        try {
+            // Step 1: Kết nối MySQL server cấp Root (không chọn DB trước) để tự khởi tạo Database nếu chưa có
+            $pdoRoot = new PDO("mysql:host=$host;port=$port;charset=$charset", $user, $pass, $options);
+            $pdoRoot->exec("CREATE DATABASE IF NOT EXISTS `$db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+
+            // Step 2: Kết nối chính thức vào CSDL web-ban-hang-nhom-6
+            $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
+            $this->pdo = new PDO($dsn, $user, $pass, $options);
+        } catch (\PDOException $e) {
+            die("Lỗi kết nối MySQL: " . $e->getMessage());
+        }
     }
 
     public function run() {
-        // 1. Re-create Tables
         $this->pdo->exec("
+            SET FOREIGN_KEY_CHECKS = 0;
             DROP TABLE IF EXISTS products;
             DROP TABLE IF EXISTS categories;
             DROP TABLE IF EXISTS users;
+            SET FOREIGN_KEY_CHECKS = 1;
 
             CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role TEXT CHECK(role IN ('admin', 'customer')) NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                role ENUM('admin', 'customer') NOT NULL DEFAULT 'customer',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
             CREATE TABLE categories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                slug TEXT UNIQUE NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                slug VARCHAR(255) UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
             CREATE TABLE products (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                category_id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                slug TEXT UNIQUE NOT NULL,
-                price REAL NOT NULL,
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                category_id INT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                slug VARCHAR(255) UNIQUE NOT NULL,
+                price DECIMAL(12, 2) NOT NULL CHECK (price >= 0),
                 description TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-            );
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_products_categories
+                    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
 
-        // 2. Seed Users
         $adminPass = password_hash('11111111', PASSWORD_BCRYPT);
         $customerPass = password_hash('88888888', PASSWORD_BCRYPT);
 
@@ -53,7 +76,6 @@ class DatabaseSeeder {
         $stmtUser->execute(['System Admin', 'admin@gmail.com', $adminPass, 'admin']);
         $stmtUser->execute(['Customer', 'customer@gmail.com', $customerPass, 'customer']);
 
-        // 3. Seed Categories
         $categories = [
             1 => ['Điện thoại', 'dien-thoai'],
             2 => ['Laptop', 'laptop'],
@@ -65,7 +87,6 @@ class DatabaseSeeder {
             $stmtCat->execute([$id, $cat[0], $cat[1]]);
         }
 
-        // 4. Seed 15 Products via Factory
         $randomProducts = ProductFactory::generate(15, [1, 2, 3, 4]);
         $stmtProd = $this->pdo->prepare("INSERT INTO products (category_id, name, slug, price, description) VALUES (?, ?, ?, ?, ?)");
 
@@ -79,7 +100,7 @@ class DatabaseSeeder {
             ]);
         }
 
-        echo "Seeded database successfully via Seeder & Factory!\n";
+        echo "Seeded MySQL database web-ban-hang-nhom-6 successfully via Seeder & Factory!\n";
     }
 }
 
