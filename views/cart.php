@@ -1,21 +1,19 @@
-<div class="container mt-5">
-    <h2 class="mb-4">Giỏ hàng của bạn</h2>
+<div class="container mt-4 mb-5">
+    <h2 class="mb-4 border-bottom pb-2">Giỏ hàng của bạn</h2>
 
     <?php if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])): ?>
-        <!-- TRẠNG THÁI TRỐNG -->
-        <div class="alert alert-warning text-center shadow-sm" role="alert">
-            <h5 class="mb-3">Giỏ hàng của bạn đang trống!</h5>
-            <a href="index.php" class="btn btn-primary">Tiếp tục mua sắm</a>
+        <div class="alert alert-warning text-center shadow-sm py-5" role="alert">
+            <h5 class="mb-3 text-secondary">Giỏ hàng của bạn đang trống!</h5>
+            <a href="index.php" class="btn btn-primary px-4 mt-2">Tiếp tục mua sắm</a>
         </div>
     <?php else: ?>
-        <!-- BẢNG GIỎ HÀNG -->
-        <div class="table-responsive shadow-sm">
-            <table class="table table-bordered align-middle text-center mb-0">
+        <div class="table-responsive shadow-sm bg-white rounded">
+            <table class="table table-hover table-bordered align-middle text-center mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Sản phẩm</th>
                         <th>Giá</th>
-                        <th>Số lượng</th>
+                        <th style="width: 150px;">Số lượng</th>
                         <th>Thành tiền</th>
                         <th>Thao tác</th>
                     </tr>
@@ -31,14 +29,14 @@
                             <td class="text-start fw-medium"><?= htmlspecialchars($item['name']) ?></td>
                             <td><?= number_format($item['price'], 0, ',', '.') ?> đ</td>
                             
-                            <!-- CỘT SỐ LƯỢNG (+ / -) -->
+                            <!-- CỘT SỐ LƯỢNG -->
                             <td>
                                 <form action="index.php?action=update_cart" method="POST" class="d-flex justify-content-center align-items-center mb-0">
                                     <input type="hidden" name="id" value="<?= $id ?>">
-                                    <button type="submit" name="update_action" value="decrease" class="btn btn-outline-secondary btn-sm">-</button>
-                                    <input type="number" name="quantity" class="form-control text-center mx-1" 
-                                           value="<?= $item['quantity'] ?>" style="width: 60px;" readonly>
-                                    <button type="submit" name="update_action" value="increase" class="btn btn-outline-secondary btn-sm">+</button>
+                                    <button type="submit" name="update_action" value="decrease" class="btn btn-outline-secondary btn-sm px-2">-</button>
+                                    <input type="number" name="quantity" class="form-control form-control-sm text-center mx-1 border-secondary" 
+                                           value="<?= $item['quantity'] ?>" readonly>
+                                    <button type="submit" name="update_action" value="increase" class="btn btn-outline-secondary btn-sm px-2">+</button>
                                 </form>
                             </td>
                             
@@ -46,9 +44,9 @@
                             
                             <!-- CỘT XÓA -->
                             <td>
-                                <form action="index.php?action=remove_cart" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa sản phẩm này?')" class="mb-0">
+                                <form action="index.php?action=remove_cart" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa sản phẩm này khỏi giỏ?')" class="mb-0">
                                     <input type="hidden" name="id" value="<?= $id ?>">
-                                    <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Xóa</button>
                                 </form>
                             </td>
                         </tr>
@@ -57,12 +55,11 @@
             </table>
         </div>
 
-        <!-- TỔNG TIỀN -->
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4">
-            <a href="index.php" class="btn btn-outline-secondary mb-3 mb-md-0">← Tiếp tục mua sắm</a>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 p-3 bg-light rounded shadow-sm">
+            <a href="index.php" class="btn btn-outline-secondary mb-3 mb-md-0"><i class="bi bi-arrow-left"></i> Tiếp tục mua sắm</a>
             <div class="text-end">
-                <h4>Tổng tiền dự kiến: <span class="text-danger fw-bold"><?= number_format($totalPrice, 0, ',', '.') ?> đ</span></h4>
-                <button class="btn btn-success mt-2 px-5">Tiến hành thanh toán</button>
+                <h4 class="mb-2">Tổng tiền: <span class="text-danger fw-bold fs-3"><?= number_format($totalPrice, 0, ',', '.') ?> đ</span></h4>
+                <button class="btn btn-success px-5 py-2 fw-bold">Tiến hành thanh toán</button>
             </div>
         </div>
     <?php endif; ?>

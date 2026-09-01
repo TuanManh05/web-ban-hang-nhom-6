@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once 'controllers/HomeController.php';
-require_once 'controllers/CartController.php'; // Nạp Controller
+require_once 'controllers/CartController.php';
 
 $page = $_GET['page'] ?? 'home';
 $action = $_GET['action'] ?? null;
@@ -22,14 +22,13 @@ if ($action) {
     }
 }
 
-// XỬ LÝ PAGE (Hiển thị giao diện)
+// XỬ LÝ HIỂN THỊ TRANG (VIEWS)
 switch ($page) {
     case 'home':
         $homeController = new HomeController();
         $homeController->index();
         break;
     case 'cart':
-        // Gọi file giao diện giỏ hàng
         require_once 'views/partials/header.php';
         require_once 'views/cart.php';
         require_once 'views/partials/footer.php';
