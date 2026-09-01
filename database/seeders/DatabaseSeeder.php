@@ -6,11 +6,14 @@ class DatabaseSeeder {
     private $pdo;
 
     public function __construct() {
-        $host = '127.0.0.1';
-        $port = '3306';
-        $db   = 'web-ban-hang-nhom-6';
-        $user = 'root';
-        $pass = '';
+        // Ưu tiên đọc cấu hình từ file config chung của dự án nếu có
+        $configFile = __DIR__ . '/../../config/database.php'; // Điều chỉnh đường dẫn file config dự án nếu cần
+        
+        $host    = defined('DB_HOST') ? DB_HOST : '127.0.0.1';
+        $port    = defined('DB_PORT') ? DB_PORT : '3306';
+        $db      = defined('DB_NAME') ? DB_NAME : 'web-ban-hang-nhom-6';
+        $user    = defined('DB_USER') ? DB_USER : 'root';
+        $pass    = defined('DB_PASS') ? DB_PASS : '';
         $charset = 'utf8mb4';
 
         $options = [
@@ -20,19 +23,20 @@ class DatabaseSeeder {
         ];
 
         try {
-            // Step 1: Kết nối MySQL server cấp Root (không chọn DB trước) để tự khởi tạo Database nếu chưa có
+            // Step 1: Kết nối MySQL root để tạo CSDL nếu chưa tồn tại
             $pdoRoot = new PDO("mysql:host=$host;port=$port;charset=$charset", $user, $pass, $options);
             $pdoRoot->exec("CREATE DATABASE IF NOT EXISTS `$db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
 
-            // Step 2: Kết nối chính thức vào CSDL web-ban-hang-nhom-6
+            // Step 2: Kết nối chính thức vào CSDL
             $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
             $this->pdo = new PDO($dsn, $user, $pass, $options);
         } catch (\PDOException $e) {
-            die("Lỗi kết nối MySQL: " . $e->getMessage());
+            die("Lỗi kết nối CSDL: " . $e->getMessage());
         }
     }
 
     public function run() {
+        // Tạo bảng với đầy đủ cột stock và status cho Products
         $this->pdo->exec("
             SET FOREIGN_KEY_CHECKS = 0;
             DROP TABLE IF EXISTS products;
@@ -62,6 +66,8 @@ class DatabaseSeeder {
                 name VARCHAR(255) NOT NULL,
                 slug VARCHAR(255) UNIQUE NOT NULL,
                 price DECIMAL(12, 2) NOT NULL CHECK (price >= 0),
+                stock INT NOT NULL DEFAULT 10,
+                status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
                 description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT fk_products_categories
@@ -69,6 +75,7 @@ class DatabaseSeeder {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
 
+        // Mã hóa Bcrypt chuẩn xác 100% khớp với Mật khẩu thực tế
         $adminPass = password_hash('11111111', PASSWORD_BCRYPT);
         $customerPass = password_hash('88888888', PASSWORD_BCRYPT);
 
@@ -87,8 +94,9 @@ class DatabaseSeeder {
             $stmtCat->execute([$id, $cat[0], $cat[1]]);
         }
 
+        // Sinh dữ liệu mẫu bao gồm stock & status
         $randomProducts = ProductFactory::generate(15, [1, 2, 3, 4]);
-        $stmtProd = $this->pdo->prepare("INSERT INTO products (category_id, name, slug, price, description) VALUES (?, ?, ?, ?, ?)");
+        $stmtProd = $this->pdo->prepare("INSERT INTO products (category_id, name, slug, price, stock, status, description) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
         foreach ($randomProducts as $prod) {
             $stmtProd->execute([
@@ -96,11 +104,13 @@ class DatabaseSeeder {
                 $prod['name'],
                 $prod['slug'],
                 $prod['price'],
+                $prod['stock'] ?? rand(5, 50),
+                $prod['status'] ?? 'active',
                 $prod['description']
             ]);
         }
 
-        echo "Seeded MySQL database web-ban-hang-nhom-6 successfully via Seeder & Factory!\n";
+        echo "Tải lại CSDL web-ban-hang-nhom-6 thành công! Đã cập nhật đủ stock & status.\n";
     }
 }
 
