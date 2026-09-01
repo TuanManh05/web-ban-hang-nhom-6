@@ -32,7 +32,7 @@ CREATE TABLE products (
 -- Admin: admin@gmail.com / 11111111 | Customer: customer@gmail.com / 88888888
 INSERT INTO users (name, email, password, role) VALUES 
 ('System Admin', 'admin@gmail.com', '$2y$10$wK1k6994Gk66b3N8X5D4v.y1pXbVfK7QG.Jg9v0k5N8Q5D4v.y1pK', 'admin'),
-('John Customer', 'customer@gmail.com', '$2y$10$C8.Rk4vP28H6L/e6vT.pL.nS2xZ5x7x9v9v9v9v9v9v9v9v9v9v9v', 'customer');
+('Customer', 'customer@gmail.com', '$2y$10$C8.Rk4vP28H6L/e6vT.pL.nS2xZ5x7x9v9v9v9v9v9v9v9v9v9v9v', 'customer');
 
 -- Categories (Slug chuẩn, không trùng ID)
 INSERT INTO categories (id, name, slug) VALUES 
