@@ -1,85 +1,71 @@
-CREATE DATABASE IF NOT EXISTS web_ban_hang_nhom_6
-    CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
+SET FOREIGN_KEY_CHECKS = 1;
 
-USE web_ban_hang_nhom_6;
-
+-- Bảng Users
 CREATE TABLE users (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) NULL,
-    address VARCHAR(255) NULL,
     role ENUM('admin', 'customer') NOT NULL DEFAULT 'customer',
-    status TINYINT(1) NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Bảng Categories
 CREATE TABLE categories (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(120) NOT NULL,
-    slug VARCHAR(150) NOT NULL UNIQUE,
-    status TINYINT(1) NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Bảng Products
 CREATE TABLE products (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    category_id BIGINT UNSIGNED NOT NULL,
-    name VARCHAR(180) NOT NULL,
-    slug VARCHAR(200) NOT NULL UNIQUE,
-    description TEXT NULL,
-    price DECIMAL(15,2) UNSIGNED NOT NULL,
-    stock INT UNSIGNED NOT NULL DEFAULT 0,
-    status TINYINT(1) NOT NULL DEFAULT 1,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    price DECIMAL(12, 2) NOT NULL CHECK (price >= 0),
+    description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_products_category FOREIGN KEY (category_id)
-        REFERENCES categories(id) ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
+    CONSTRAINT fk_products_categories
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE product_images (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    product_id BIGINT UNSIGNED NOT NULL,
-    image_path VARCHAR(255) NOT NULL,
-    is_primary TINYINT(1) NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_product_images_product FOREIGN KEY (product_id)
-        REFERENCES products(id) ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
+-- Thêm dữ liệu mẫu: Users
+-- Admin: admin@gmail.com / Pass: 11111111 
+-- Customer: customer@gmail.com / Pass: 88888888
+INSERT INTO users (name, email, password, role) VALUES 
+('System Admin', 'admin@gmail.com', '$2y$10$Q78K6mD.Yh8Z3L9vX.1u3e9Y9v9v9v9v9v9v9v9v9v9v9v9v9v9v9', 'admin'),
+('Customer', 'customer@gmail.com', '$2y$10$H8.Rk4vP28H6L/e6vT.pL.nS2xZ5x7x9v9v9v9v9v9v9v9v9v9v9v', 'customer');
 
-CREATE TABLE orders (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT UNSIGNED NULL,
-    customer_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) NOT NULL,
-    address VARCHAR(255) NOT NULL,
-    note VARCHAR(500) NULL,
-    total_amount DECIMAL(15,2) UNSIGNED NOT NULL,
-    status ENUM('pending', 'confirmed', 'shipping', 'completed', 'cancelled')
-        NOT NULL DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_orders_user FOREIGN KEY (user_id)
-        REFERENCES users(id) ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
+-- Thêm dữ liệu mẫu: Categories
+INSERT INTO categories (id, name, slug) VALUES 
+(1, 'Điện thoại', 'dien-thoai'),
+(2, 'Laptop', 'laptop'),
+(3, 'Phụ kiện', 'phu-kien'),
+(4, 'Máy ảnh', 'may-anh');
 
-CREATE TABLE order_items (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED NOT NULL,
-    product_id BIGINT UNSIGNED NULL,
-    product_name VARCHAR(180) NOT NULL,
-    price DECIMAL(15,2) UNSIGNED NOT NULL,
-    quantity INT UNSIGNED NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_order_items_order FOREIGN KEY (order_id)
-        REFERENCES orders(id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_order_items_product FOREIGN KEY (product_id)
-        REFERENCES products(id) ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
+-- Thêm dữ liệu mẫu: Products
+INSERT INTO products (category_id, name, slug, price, description) VALUES 
+(1, 'iPhone 15 Pro Max', 'iphone-15-pro-max', 30000000, 'Điện thoại Apple cao cấp'),
+(1, 'Samsung Galaxy S24 Ultra', 'samsung-galaxy-s24-ultra', 29000000, 'Flagship Samsung'),
+(1, 'Xiaomi 14 Ultra', 'xiaomi-14-ultra', 25000000, 'Điện thoại nhiếp ảnh Xiaomi'),
+(1, 'Google Pixel 8 Pro', 'google-pixel-8-pro', 20000000, 'Điện thoại Google'),
 
-INSERT INTO categories (name, slug) VALUES
-    ('Thời trang', 'thoi-trang'),
-    ('Phụ kiện', 'phu-kien');
+(2, 'MacBook Pro 14 M3', 'macbook-pro-14-m3', 40000000, 'Laptop Apple chip M3'),
+(2, 'Dell XPS 13', 'dell-xps-13', 35000000, 'Laptop mỏng nhẹ Windows'),
+(2, 'ThinkPad X1 Carbon', 'thinkpad-x1-carbon', 38000000, 'Laptop doanh nhân Lenovo'),
+(2, 'Asus ROG Zephyrus G14', 'asus-rog-zephyrus-g14', 33000000, 'Laptop gaming mỏng nhẹ'),
+
+(3, 'Tai nghe AirPods Pro 2', 'tai-nghe-airpods-pro-2', 5500000, 'Tai nghe chống ồn Apple'),
+(3, 'Sạc Anker 65W GaN', 'sac-anker-65w-gan', 1200000, 'Củ sạc nhanh đa năng'),
+(3, 'Chuột Logitech MX Master 3S', 'chuot-logitech-mx-master-3s', 2500000, 'Chuột công thái học'),
+(3, 'Bàn phím cơ Keychron K2', 'ban-phim-co-keychron-k2', 1800000, 'Bàn phím cơ không dây'),
+
+(4, 'Sony FX3', 'sony-fx3', 90000000, 'Máy ảnh Cinema Sony'),
+(4, 'Canon EOS R6 Mark II', 'canon-eos-r6-mark-ii', 60000000, 'Máy ảnh mirrorless Canon'),
+(4, 'Fujifilm X-T5', 'fujifilm-x-t5', 42000000, 'Máy ảnh Fujifilm chuẩn màu');
