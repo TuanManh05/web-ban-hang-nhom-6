@@ -1,24 +1,25 @@
 <?php
-// Nạp cấu hình database của nhóm
+declare(strict_types=1);
+
 require_once __DIR__ . '/../config/database.php';
 
-class Product {
-    private $conn;
-
-    public function __construct() {
-        $this->conn = database();
-    }
-
-    public function getAllProducts() {
-        $stmt = $this->conn->prepare("SELECT * FROM products");
-        $stmt->execute();
+final class Product
+{
+    public static function featured(): array
+    {
+        $conn = database();
+        // Giả sử bảng tên là products
+        $stmt = $conn->query("SELECT * FROM products LIMIT 10");
         return $stmt->fetchAll();
     }
 
-    public function getProductById($id) {
-        $stmt = $this->conn->prepare("SELECT * FROM products WHERE id = :id");
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetch();
+    // Hàm bổ sung cho CartController gọi
+    public static function findById(int $id): ?array
+    {
+        $conn = database();
+        $stmt = $conn->prepare("SELECT * FROM products WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $product = $stmt->fetch();
+        return $product ?: null;
     }
 }
