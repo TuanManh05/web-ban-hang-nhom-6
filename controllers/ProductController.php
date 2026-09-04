@@ -10,32 +10,39 @@ class ProductController {
             session_start();
         }
 
+        // 2. Kiểm tra đăng nhập và phân quyền Admin (SHOP-9 & SHOP-10)
+        $this->checkAdminAuth();
+
         $this->productModel = new ProductModel($pdo);
     }
 
     /**
-     * Chuyển đổi chuỗi Tiếng Việt có dấu thành Slug chuẩn URL
+     * Middleware kiểm tra quyền Admin
      */
-    private function createSlug($str) {
-        $str = mb_strtolower($str, 'UTF-8');
-
-        $unicode = [
-            'a' => 'à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ|À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ',
-            'e' => 'è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ|È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ',
-            'i' => 'ì|í|ị|ỉ|ĩ|Ì|Í|Ị|Ỉ|Ĩ',
-            'o' => 'ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ|Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ',
-            'u' => 'ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ|Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ',
-            'y' => 'ỳ|ý|ỵ|ỷ|ỹ|Ỳ|Ý|Ỵ|Ỷ|Ỹ',
-            'd' => 'đ|Đ',
-        ];
-
-        foreach ($unicode as $nonAccent => $accent) {
-            $str = preg_replace("/($accent)/i", $nonAccent, $str);
+    private function checkAdminAuth() {
+        if (!isset($_SESSION['user'])) {
+            header("Location: index.php?action=login&error=" . urlencode("Vui lòng đăng nhập để tiếp tục!"));
+            exit;
         }
 
-        $str = preg_replace('/[^a-z0-9]+/i', '-', $str);
-        $str = trim($str, '-');
+        $userRole = $_SESSION['user']['role'] ?? '';
+        if ($userRole !== 'admin' && $userRole !== 1 && $userRole !== '1') {
+            header("Location: index.php?error=" . urlencode("Bạn không có quyền truy cập trang quản trị!"));
+            exit;
+        }
+    }
 
+    private function createSlug($str) {
+        $str = trim(mb_strtolower($str));
+        $str = preg_replace('/(à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ)/', 'a', $str);
+        $str = preg_replace('/(è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ)/', 'e', $str);
+        $str = preg_replace('/(ì|í|ị|ỉ|ĩ)/', 'i', $str);
+        $str = preg_replace('/(ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ)/', 'o', $str);
+        $str = preg_replace('/(ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ)/', 'u', $str);
+        $str = preg_replace('/(ỳ|ý|ỵ|ỷ|ỹ)/', 'y', $str);
+        $str = preg_replace('/(đ)/', 'd', $str);
+        $str = preg_replace('/[^a-z0-9-\s]/', '', $str);
+        $str = preg_replace('/([\s]+)/', '-', $str);
         return $str;
     }
 
@@ -103,6 +110,9 @@ class ProductController {
                 $errors[] = "Số lượng phải là số nguyên.";
             } elseif ((int)$stock < 0) {
                 $errors[] = "Số lượng phải lớn hơn hoặc bằng 0.";
+            }
+            if (!in_array($status, [0, 1], true)) {
+                $errors[] = "Trạng thái sản phẩm không hợp lệ.";
             }
 
             if (!empty($errors)) {
@@ -189,6 +199,9 @@ class ProductController {
             } elseif ((int)$stock < 0) {
                 $errors[] = "Số lượng phải lớn hơn hoặc bằng 0.";
             }
+            if (!in_array($status, [0, 1], true)) {
+                $errors[] = "Trạng thái sản phẩm không hợp lệ.";
+            }
 
             if (!empty($errors)) {
                 $categories = $this->productModel->getAllCategories();
@@ -223,12 +236,12 @@ class ProductController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = (int)($_POST['id'] ?? 0);
             
-            if ($id > 0) {
+            if ($id > 0 && $this->productModel->getProductById($id)) {
                 $this->productModel->deleteProduct($id);
                 header("Location: index.php?action=product-index&msg=" . urlencode("Xóa sản phẩm thành công!"));
                 exit;
             } else {
-                header("Location: index.php?action=product-index&error=" . urlencode("ID sản phẩm không hợp lệ!"));
+                header("Location: index.php?action=product-index&error=" . urlencode("Sản phẩm không tồn tại!"));
                 exit;
             }
         }

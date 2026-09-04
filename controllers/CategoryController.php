@@ -5,41 +5,49 @@ class CategoryController {
     private $categoryModel;
 
     public function __construct($pdo) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $this->checkAdminAuth();
         $this->categoryModel = new CategoryModel($pdo);
     }
 
-    /**
-     * Chuyển đổi chuỗi Tiếng Việt có dấu thành Slug chuẩn URL
-     */
-    private function createSlug($str) {
-        $str = mb_strtolower($str, 'UTF-8');
-        $unicode = [
-            'a' => 'à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ|À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ',
-            'e' => 'è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ|È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ',
-            'i' => 'ì|í|ị|ỉ|ĩ|Ì|Í|Ị|Ỉ|Ĩ',
-            'o' => 'ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ|Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ',
-            'u' => 'ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ|Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ',
-            'y' => 'ỳ|ý|ỵ|ỷ|ỹ|Ỳ|Ý|Ỵ|Ỷ|Ỹ',
-            'd' => 'đ|Đ',
-        ];
-        foreach ($unicode as $nonAccent => $accent) {
-            $str = preg_replace("/($accent)/i", $nonAccent, $str);
+    private function checkAdminAuth() {
+        if (!isset($_SESSION['user'])) {
+            header('Location: index.php?action=login&error=' . urlencode('Vui lòng đăng nhập để tiếp tục!'));
+            exit;
         }
-        $str = preg_replace('/[^a-z0-9]+/i', '-', $str);
-        return trim($str, '-');
+
+        $role = $_SESSION['user']['role'] ?? '';
+        if ($role !== 'admin' && $role !== 1 && $role !== '1') {
+            header('Location: index.php?error=' . urlencode('Bạn không có quyền truy cập trang quản trị!'));
+            exit;
+        }
     }
 
-    /**
-     * Sinh Slug duy nhất tránh trùng lặp trong DB
-     */
+    private function createSlug($value) {
+        $value = trim(mb_strtolower($value, 'UTF-8'));
+        $value = strtr($value, [
+            'à'=>'a','á'=>'a','ạ'=>'a','ả'=>'a','ã'=>'a','â'=>'a','ầ'=>'a','ấ'=>'a','ậ'=>'a','ẩ'=>'a','ẫ'=>'a','ă'=>'a','ằ'=>'a','ắ'=>'a','ặ'=>'a','ẳ'=>'a','ẵ'=>'a',
+            'è'=>'e','é'=>'e','ẹ'=>'e','ẻ'=>'e','ẽ'=>'e','ê'=>'e','ề'=>'e','ế'=>'e','ệ'=>'e','ể'=>'e','ễ'=>'e',
+            'ì'=>'i','í'=>'i','ị'=>'i','ỉ'=>'i','ĩ'=>'i',
+            'ò'=>'o','ó'=>'o','ọ'=>'o','ỏ'=>'o','õ'=>'o','ô'=>'o','ồ'=>'o','ố'=>'o','ộ'=>'o','ổ'=>'o','ỗ'=>'o','ơ'=>'o','ờ'=>'o','ớ'=>'o','ợ'=>'o','ở'=>'o','ỡ'=>'o',
+            'ù'=>'u','ú'=>'u','ụ'=>'u','ủ'=>'u','ũ'=>'u','ư'=>'u','ừ'=>'u','ứ'=>'u','ự'=>'u','ử'=>'u','ữ'=>'u',
+            'ỳ'=>'y','ý'=>'y','ỵ'=>'y','ỷ'=>'y','ỹ'=>'y','đ'=>'d'
+        ]);
+        $value = preg_replace('/[^a-z0-9]+/', '-', $value);
+        return trim($value, '-');
+    }
+
     private function generateUniqueSlug($name, $excludeId = null) {
         $baseSlug = $this->createSlug($name);
+        $baseSlug = $baseSlug !== '' ? $baseSlug : 'danh-muc';
         $slug = $baseSlug;
-        $count = 1;
+        $suffix = 1;
 
         while ($this->categoryModel->isSlugExists($slug, $excludeId)) {
-            $slug = $baseSlug . '-' . $count;
-            $count++;
+            $slug = $baseSlug . '-' . $suffix++;
         }
 
         return $slug;
@@ -58,24 +66,30 @@ class CategoryController {
 
     // 2. Lưu danh mục mới
     public function store() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: index.php?action=category-index&error=' . urlencode('Phương thức không được hỗ trợ!'));
+            exit;
+        }
+
         $name = trim($_POST['name'] ?? '');
         $status = (int)($_POST['status'] ?? 1);
         $errors = [];
 
-        if (empty($name)) {
+        if ($name === '') {
             $errors[] = "Tên danh mục không được để trống.";
+        }
+        if (!in_array($status, [0, 1], true)) {
+            $errors[] = "Trạng thái danh mục không hợp lệ.";
         }
 
         if (empty($errors)) {
-            // Xử lý tạo slug duy nhất không trùng lặp
             $slug = $this->generateUniqueSlug($name);
-
             $this->categoryModel->insertCategory([
                 'name' => $name,
                 'slug' => $slug,
                 'status' => $status
             ]);
-            header("Location: index.php?action=category-index&msg=" . urlencode("Thêm danh mục thành công!"));
+            header('Location: index.php?action=category-index&msg=' . urlencode('Thêm danh mục thành công!'));
             exit;
         }
 
@@ -87,7 +101,7 @@ class CategoryController {
         $id = (int)($_GET['id'] ?? 0);
         $category = $this->categoryModel->getCategoryById($id);
         if (!$category) {
-            header("Location: index.php?action=category-index&error=" . urlencode("Danh mục không tồn tại!"));
+            header("Location: index.php?action=category-index&error=Danh mục không tồn tại!");
             exit;
         }
         require_once __DIR__ . '/../views/admin/categories/edit.php';
@@ -95,10 +109,15 @@ class CategoryController {
 
     // 3. Cập nhật danh mục
     public function update() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: index.php?action=category-index&error=' . urlencode('Phương thức không được hỗ trợ!'));
+            exit;
+        }
+
         $id = (int)($_GET['id'] ?? 0);
         $category = $this->categoryModel->getCategoryById($id);
         if (!$category) {
-            header("Location: index.php?action=category-index&error=" . urlencode("Danh mục không tồn tại!"));
+            header("Location: index.php?action=category-index&error=Danh mục không tồn tại!");
             exit;
         }
 
@@ -106,58 +125,51 @@ class CategoryController {
         $status = (int)($_POST['status'] ?? 1);
         $errors = [];
 
-        if (empty($name)) {
+        if ($name === '') {
             $errors[] = "Tên danh mục không được để trống.";
+        }
+        if (!in_array($status, [0, 1], true)) {
+            $errors[] = "Trạng thái danh mục không hợp lệ.";
         }
 
         if (empty($errors)) {
-            // Kiểm tra và sinh slug mới nếu đổi tên, bỏ qua ID hiện tại
-            $slug = ($name !== $category['name']) 
-                ? $this->generateUniqueSlug($name, $id) 
+            $slug = $name !== $category['name']
+                ? $this->generateUniqueSlug($name, $id)
                 : $category['slug'];
-
             $this->categoryModel->updateCategory($id, [
                 'name' => $name,
                 'slug' => $slug,
                 'status' => $status
             ]);
-            header("Location: index.php?action=category-index&msg=" . urlencode("Cập nhật danh mục thành công!"));
+            header('Location: index.php?action=category-index&msg=' . urlencode('Cập nhật danh mục thành công!'));
             exit;
         }
 
         require_once __DIR__ . '/../views/admin/categories/edit.php';
     }
 
-    /**
-     * 4. Xóa danh mục (Chỉ nhận phương thức POST)
-     */
+    // 4. Xóa danh mục
     public function delete() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = (int)($_POST['id'] ?? 0);
-            $confirm = (int)($_POST['confirm'] ?? 0);
-
-            if ($id > 0) {
-                // Kiểm tra số lượng sản phẩm chứa trong danh mục trước khi xóa
-                $productCount = $this->categoryModel->countProductsByCategoryId($id);
-
-                // Nếu còn sản phẩm và chưa xác nhận xóa ép buộc (confirm != 1)
-                if ($productCount > 0 && $confirm !== 1) {
-                    header("Location: index.php?action=category-index&warning_delete_id={$id}&msg=" . urlencode("Danh mục này hiện có {$productCount} sản phẩm. Bạn có chắc chắn muốn tiếp tục xóa không?"));
-                    exit;
-                }
-
-                $this->categoryModel->deleteCategory($id);
-                header("Location: index.php?action=category-index&msg=" . urlencode("Xóa danh mục thành công!"));
-                exit;
-            } else {
-                header("Location: index.php?action=category-index&error=" . urlencode("ID danh mục không hợp lệ!"));
-                exit;
-            }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: index.php?action=category-index&error=' . urlencode('Phương thức không được hỗ trợ!'));
+            exit;
         }
 
-        // Nếu cố tình truy cập qua GET
-        header("Location: index.php?action=category-index&error=" . urlencode("Phương thức không được hỗ trợ!"));
+        $id = (int)($_POST['id'] ?? 0);
+        $category = $this->categoryModel->getCategoryById($id);
+
+        if (!$category) {
+            header('Location: index.php?action=category-index&error=' . urlencode('Danh mục không tồn tại!'));
+            exit;
+        }
+
+        if ($this->categoryModel->hasProducts($id)) {
+            header('Location: index.php?action=category-index&error=' . urlencode('Không thể xóa danh mục đang có sản phẩm!'));
+            exit;
+        }
+
+        $this->categoryModel->deleteCategory($id);
+        header('Location: index.php?action=category-index&msg=' . urlencode('Xóa danh mục thành công!'));
         exit;
     }
 }
-?>

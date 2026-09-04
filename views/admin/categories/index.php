@@ -20,7 +20,7 @@
     </div>
 
     <!-- Thông báo thành công (Flash Message) -->
-    <?php if (isset($_GET['msg']) && !isset($_GET['warning_delete_id'])): ?>
+    <?php if (isset($_GET['msg'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <?= htmlspecialchars($_GET['msg']) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -72,9 +72,8 @@
                                             <a href="index.php?action=category-edit&id=<?= $cat['id'] ?>" class="btn btn-warning btn-sm">
                                                 <i class="bi bi-pencil-square"></i> Sửa
                                             </a>
-                                            <!-- Nút Xóa (Dùng Form POST) -->
                                             <form action="index.php?action=category-delete" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa danh mục này không?');">
-                                                <input type="hidden" name="id" value="<?= $cat['id'] ?>">
+                                                <input type="hidden" name="id" value="<?= (int)$cat['id'] ?>">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
                                                     <i class="bi bi-trash"></i> Xóa
                                                 </button>
@@ -96,23 +95,5 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Tự động hiển thị alert/pop-up xác nhận nếu danh mục vẫn còn chứa sản phẩm (Xác nhận cưỡng chế xóa qua POST) -->
-<?php if (isset($_GET['warning_delete_id']) && isset($_GET['msg'])): ?>
-<form id="forceDeleteForm" action="index.php?action=category-delete" method="POST">
-    <input type="hidden" name="id" value="<?= (int)$_GET['warning_delete_id'] ?>">
-    <input type="hidden" name="confirm" value="1">
-</form>
-<script>
-    if (confirm("<?= htmlspecialchars($_GET['msg']) ?>")) {
-        // Nếu chọn OK -> Submit Form ẩn gửi bằng phương thức POST với confirm=1
-        document.getElementById('forceDeleteForm').submit();
-    } else {
-        // Nếu chọn Cancel -> Quay lại trang danh mục
-        window.location.href = "index.php?action=category-index";
-    }
-</script>
-<?php endif; ?>
-
 </body>
 </html>
