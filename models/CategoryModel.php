@@ -20,6 +20,33 @@ class CategoryModel {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Đếm số lượng sản phẩm thuộc danh mục (Dùng để kiểm tra trước khi xóa)
+     */
+    public function countProductsByCategoryId($categoryId) {
+        $sql = "SELECT COUNT(*) FROM products WHERE category_id = :category_id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':category_id' => $categoryId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Kiểm tra Slug danh mục đã tồn tại trong CSDL hay chưa
+     * $excludeId dùng khi Update (bỏ qua slug của chính danh mục đang sửa)
+     */
+    public function isSlugExists($slug, $excludeId = null) {
+        if ($excludeId) {
+            $sql = "SELECT COUNT(*) FROM categories WHERE slug = :slug AND id != :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([':slug' => $slug, ':id' => $excludeId]);
+        } else {
+            $sql = "SELECT COUNT(*) FROM categories WHERE slug = :slug";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([':slug' => $slug]);
+        }
+        return $stmt->fetchColumn() > 0;
+    }
+
     // Thêm mới danh mục
     public function insertCategory($data) {
         $sql = "INSERT INTO categories (name, slug, status) VALUES (:name, :slug, :status)";
@@ -49,3 +76,4 @@ class CategoryModel {
         return $stmt->execute([':id' => $id]);
     }
 }
+?>

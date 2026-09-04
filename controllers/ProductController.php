@@ -10,39 +10,32 @@ class ProductController {
             session_start();
         }
 
-        // 2. Kiểm tra đăng nhập và phân quyền Admin (SHOP-9 & SHOP-10)
-        $this->checkAdminAuth();
-
         $this->productModel = new ProductModel($pdo);
     }
 
     /**
-     * Middleware kiểm tra quyền Admin
+     * Chuyển đổi chuỗi Tiếng Việt có dấu thành Slug chuẩn URL
      */
-    private function checkAdminAuth() {
-        if (!isset($_SESSION['user'])) {
-            header("Location: index.php?action=login&error=" . urlencode("Vui lòng đăng nhập để tiếp tục!"));
-            exit;
-        }
-
-        $userRole = $_SESSION['user']['role'] ?? '';
-        if ($userRole !== 'admin' && $userRole != 1) {
-            header("Location: index.php?error=" . urlencode("Bạn không có quyền truy cập trang quản trị!"));
-            exit;
-        }
-    }
-
     private function createSlug($str) {
-        $str = trim(mb_strtolower($str));
-        $str = preg_replace('/(à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ)/', 'a', $str);
-        $str = preg_replace('/(è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ)/', 'e', $str);
-        $str = preg_replace('/(ì|í|ị|ỉ|ĩ)/', 'i', $str);
-        $str = preg_replace('/(ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ)/', 'o', $str);
-        $str = preg_replace('/(ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ)/', 'u', $str);
-        $str = preg_replace('/(ỳ|ý|ỵ|ỷ|ỹ)/', 'y', $str);
-        $str = preg_replace('/(đ)/', 'd', $str);
-        $str = preg_replace('/[^a-z0-9-\s]/', '', $str);
-        $str = preg_replace('/([\s]+)/', '-', $str);
+        $str = mb_strtolower($str, 'UTF-8');
+
+        $unicode = [
+            'a' => 'à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ|À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ',
+            'e' => 'è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ|È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ',
+            'i' => 'ì|í|ị|ỉ|ĩ|Ì|Í|Ị|Ỉ|Ĩ',
+            'o' => 'ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ|Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ',
+            'u' => 'ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ|Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ',
+            'y' => 'ỳ|ý|ỵ|ỷ|ỹ|Ỳ|Ý|Ỵ|Ỷ|Ỹ',
+            'd' => 'đ|Đ',
+        ];
+
+        foreach ($unicode as $nonAccent => $accent) {
+            $str = preg_replace("/($accent)/i", $nonAccent, $str);
+        }
+
+        $str = preg_replace('/[^a-z0-9]+/i', '-', $str);
+        $str = trim($str, '-');
+
         return $str;
     }
 
