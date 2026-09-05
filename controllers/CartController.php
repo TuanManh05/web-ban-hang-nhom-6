@@ -1,14 +1,12 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../models/Product.php';
+require_once __DIR__ . '/../config/database.php';
 
 final class CartController
 {
-    // Hàm hiển thị giao diện giỏ hàng
     public function index(): void
     {
-        $pageTitle = 'Giỏ hàng';
         require __DIR__ . '/../views/cart.php';
     }
 
@@ -19,48 +17,51 @@ final class CartController
         $redirectUrl = $_SERVER['HTTP_REFERER'] ?? 'index.php';
 
         if ($quantity <= 0) {
-            $_SESSION['cart_error'] = "Số lượng thêm không hợp lệ!";
+            $_SESSION['cart_error'] = "Số lượng không hợp lệ!";
             header("Location: " . $redirectUrl);
             exit;
         }
 
-        // Lấy thông tin thật từ DB bằng hàm tĩnh
-        $product = Product::findById($productId);
+        $conn = database();
+        $stmt = $conn->prepare("SELECT id, name, price, stock FROM products WHERE id = :id");
+        $stmt->execute(['id' => $productId]);
+        $product = $stmt->fetch();
 
         if ($product) {
             $stock = (int)$product['stock'];
-
             if ($stock <= 0) {
-                $_SESSION['cart_error'] = "Sản phẩm này hiện tại đã hết hàng!";
+                $_SESSION['cart_error'] = "Sản phẩm đã hết hàng!";
                 header("Location: " . $redirectUrl);
                 exit;
             }
 
-            if (!isset($_SESSION['cart'])) { $_SESSION['cart'] = []; }
-            
+            if (!isset($_SESSION['cart'])) {
+                $_SESSION['cart'] = [];
+            }
+
             if (isset($_SESSION['cart'][$productId])) {
                 $newQty = $_SESSION['cart'][$productId]['quantity'] + $quantity;
                 if ($newQty > $stock) {
                     $_SESSION['cart'][$productId]['quantity'] = $stock;
-                    $_SESSION['cart_error'] = "Chỉ còn {$stock} sản phẩm trong kho. Đã tự điều chỉnh!";
+                    $_SESSION['cart_error'] = "Chỉ còn {$stock} sản phẩm. Đã điều chỉnh!";
                 } else {
                     $_SESSION['cart'][$productId]['quantity'] = $newQty;
-                    $_SESSION['cart_success'] = "Đã thêm sản phẩm vào giỏ hàng!";
+                    $_SESSION['cart_success'] = "Đã thêm vào giỏ hàng!";
                 }
-                $_SESSION['cart'][$productId]['stock'] = $stock; // Cập nhật lại tồn kho mới nhất
+                $_SESSION['cart'][$productId]['stock'] = $stock;
             } else {
                 if ($quantity > $stock) {
                     $_SESSION['cart'][$productId] = [
                         'name' => $product['name'], 'price' => $product['price'],
                         'quantity' => $stock, 'stock' => $stock
                     ];
-                    $_SESSION['cart_error'] = "Vượt tồn kho! Đã thêm tối đa {$stock} sản phẩm.";
+                    $_SESSION['cart_error'] = "Đã thêm tối đa {$stock} sản phẩm.";
                 } else {
                     $_SESSION['cart'][$productId] = [
                         'name' => $product['name'], 'price' => $product['price'],
                         'quantity' => $quantity, 'stock' => $stock
                     ];
-                    $_SESSION['cart_success'] = "Đã thêm sản phẩm vào giỏ hàng!";
+                    $_SESSION['cart_success'] = "Đã thêm vào giỏ hàng!";
                 }
             }
         } else {
@@ -76,12 +77,14 @@ final class CartController
         $id = (int)($_POST['id'] ?? 0);
         
         if (isset($_SESSION['cart'][$id])) {
-            // Lấy lại DB để check tồn kho mới nhất
-            $product = Product::findById($id);
+            $conn = database();
+            $stmt = $conn->prepare("SELECT stock FROM products WHERE id = :id");
+            $stmt->execute(['id' => $id]);
+            $product = $stmt->fetch();
 
             if (!$product) {
                 unset($_SESSION['cart'][$id]);
-                $_SESSION['cart_error'] = "Sản phẩm không còn tồn tại trên hệ thống.";
+                $_SESSION['cart_error'] = "Sản phẩm không còn tồn tại.";
             } else {
                 $stock = (int)$product['stock'];
                 $_SESSION['cart'][$id]['stock'] = $stock; 
@@ -98,10 +101,10 @@ final class CartController
                     $_SESSION['cart_success'] = "Đã xóa sản phẩm khỏi giỏ.";
                 } elseif ($stock <= 0) {
                     unset($_SESSION['cart'][$id]);
-                    $_SESSION['cart_error'] = "Sản phẩm này đã hết hàng và bị xóa khỏi giỏ.";
+                    $_SESSION['cart_error'] = "Sản phẩm đã hết hàng.";
                 } elseif ($newQty > $stock) {
                     $_SESSION['cart'][$id]['quantity'] = $stock;
-                    $_SESSION['cart_error'] = "Chỉ còn tối đa {$stock} sản phẩm trong kho!";
+                    $_SESSION['cart_error'] = "Chỉ còn tối đa {$stock} sản phẩm!";
                 } else {
                     $_SESSION['cart'][$id]['quantity'] = $newQty;
                 }
@@ -116,7 +119,7 @@ final class CartController
         $id = (int)($_POST['id'] ?? 0);
         if (isset($_SESSION['cart'][$id])) {
             unset($_SESSION['cart'][$id]);
-            $_SESSION['cart_success'] = "Đã xóa sản phẩm thành công.";
+            $_SESSION['cart_success'] = "Đã xóa sản phẩm.";
         }
         header('Location: index.php?page=cart');
         exit;
