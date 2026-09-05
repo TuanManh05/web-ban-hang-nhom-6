@@ -1,43 +1,5 @@
 <?php
 declare(strict_types=1);
-session_start();
-
-require_once __DIR__ . '/config/database.php';
-require_once __DIR__ . '/controllers/HomeController.php';
-require_once __DIR__ . '/controllers/CartController.php';
-
-$page = $_GET['page'] ?? 'home';
-$action = $_GET['action'] ?? null;
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
-    $cartController = new CartController();
-    switch ($action) {
-        case 'add_cart':
-            $cartController->addToCart();
-            break;
-        case 'update_cart':
-            $cartController->updateCart();
-            break;
-        case 'remove_cart':
-            $cartController->removeFromCart();
-            break;
-    }
-}
-
-switch ($page) {
-    case 'home':
-        $controller = new HomeController();
-        $controller->index();
-        break;
-    case 'cart':
-        $controller = new CartController();
-        $controller->index();
-        break;
-    default:
-        echo "<div style='text-align:center; margin-top:50px;'><h3>404 Not Found</h3></div>";
-        break;
-}
-=======
 
 // Bật hiển thị lỗi chi tiết để dễ dàng kiểm tra
 ini_set('display_errors', '1');
@@ -142,5 +104,4 @@ switch ($action) {
         $controller = new HomeController();
         $controller->index();
         break;
->>>>>>> ad1105a123b1ff4fdf74b866336060b9d899c96f
 }

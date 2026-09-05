@@ -1,139 +1,224 @@
-<<<<<<< HEAD
-<?php require __DIR__ . '/partials/header.php'; ?>
-<div class="container mt-4 mb-5">
-    <h2 class="mb-4 border-bottom pb-2">Giỏ hàng của bạn</h2>
-    <?php if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])): ?>
-        <div class="alert alert-warning text-center shadow-sm py-5" role="alert">
-            <h5 class="mb-3 text-secondary">Giỏ hàng của bạn đang trống!</h5>
-            <a href="index.php" class="btn btn-primary px-4 mt-2">Tiếp tục mua sắm</a>
-        </div>
-    <?php else: ?>
-        <div class="table-responsive shadow-sm bg-white rounded">
-            <table class="table table-hover table-bordered align-middle text-center mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Sản phẩm</th>
-                        <th>Giá</th>
-                        <th style="width: 150px;">Số lượng</th>
-                        <th>Thành tiền</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $totalPrice = 0; 
-                    foreach ($_SESSION['cart'] as $id => $item): 
-                        $subTotal = $item['price'] * $item['quantity'];
-                        $totalPrice += $subTotal;
-                    ?>
-                        <tr>
-                            <td class="text-start fw-medium"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></td>
-                            <td><?= number_format((float)$item['price'], 0, ',', '.') ?> đ</td>
-                            <td>
-                                <form action="index.php?action=update_cart" method="POST" class="d-flex justify-content-center align-items-center mb-0">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars((string)$id, ENT_QUOTES, 'UTF-8') ?>">
-                                    <button type="submit" name="update_action" value="decrease" class="btn btn-outline-secondary btn-sm px-2">-</button>
-                                    <input type="number" name="quantity" class="form-control form-control-sm text-center mx-1 border-secondary" value="<?= (int)$item['quantity'] ?>" readonly>
-                                    <button type="submit" name="update_action" value="increase" class="btn btn-outline-secondary btn-sm px-2">+</button>
-                                </form>
-                            </td>
-                            <td class="fw-bold text-danger"><?= number_format((float)$subTotal, 0, ',', '.') ?> đ</td>
-                            <td>
-                                <form action="index.php?action=remove_cart" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa sản phẩm này khỏi giỏ?')" class="mb-0">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars((string)$id, ENT_QUOTES, 'UTF-8') ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Xóa</button>
-                                </form>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 p-3 bg-light rounded shadow-sm">
-            <a href="index.php" class="btn btn-outline-secondary mb-3 mb-md-0"><i class="bi bi-arrow-left"></i> Tiếp tục mua sắm</a>
-            <div class="text-end">
-                <h4 class="mb-2">Tổng tiền: <span class="text-danger fw-bold fs-3"><?= number_format((float)$totalPrice, 0, ',', '.') ?> đ</span></h4>
-                <button class="btn btn-success px-5 py-2 fw-bold">Tiến hành thanh toán</button>
-            </div>
-        </div>
-    <?php endif; ?>
-</div>
-<?php require __DIR__ . '/partials/footer.php'; ?>
-=======
 <?php
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/Cart.php';
+
 $pageTitle = 'Giỏ hàng';
+
+// Đường dẫn tương đối của chính trang này, dùng để redirect sau khi xử lý form
+$selfPath = 'cart.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    $productId = (int) ($_POST['product_id'] ?? 0);
+    $result = null;
+
+    switch ($action) {
+        case 'add':
+            $quantity = max(1, (int) ($_POST['quantity'] ?? 1));
+            $result = Cart::add($productId, $quantity);
+            break;
+
+        case 'increase':
+            $result = Cart::increase($productId);
+            break;
+
+        case 'decrease':
+            $result = Cart::decrease($productId);
+            break;
+
+        case 'remove':
+            Cart::remove($productId);
+            $result = ['success' => true, 'message' => 'Đã xoá sản phẩm khỏi giỏ hàng.'];
+            break;
+
+        case 'clear':
+            Cart::clear();
+            $result = ['success' => true, 'message' => 'Đã xoá toàn bộ giỏ hàng.'];
+            break;
+    }
+
+    // Cho phép các trang khác (vd. product-detail.php) chỉ định nơi quay lại
+    // sau khi thêm vào giỏ, nhưng chỉ chấp nhận đường dẫn .php nội bộ để tránh
+    // rủi ro open-redirect.
+    $redirectTo = $selfPath;
+    if (
+        !empty($_POST['redirect'])
+        && preg_match('#^[a-zA-Z0-9_\-\/]+\.php(?:\?[a-zA-Z0-9=&%._\-\[\]]*)?$#', (string) $_POST['redirect'])
+    ) {
+        $redirectTo = $_POST['redirect'];
+    }
+
+    if ($result !== null) {
+        $separator = str_contains($redirectTo, '?') ? '&' : '?';
+        $redirectTo .= $separator . ($result['success'] ? 'msg=' : 'error=') . urlencode($result['message']);
+    }
+
+    header('Location: ' . $redirectTo);
+    exit;
+}
+
+$message = null;
+$messageType = 'success';
+if (isset($_GET['msg'])) {
+    $message = $_GET['msg'];
+    $messageType = 'success';
+} elseif (isset($_GET['error'])) {
+    $message = $_GET['error'];
+    $messageType = 'danger';
+}
+
+$items = Cart::getItems();
+$total = Cart::getTotalAmount();
 
 require __DIR__ . '/partials/header.php';
 ?>
-<section class="container py-5 text-center">
-    <h1 class="h3 fw-bold mb-3">Giỏ hàng</h1>
-    <p class="text-secondary">
-        Chức năng giỏ hàng đang được nhóm phát triển.
-        Quay lại <a href="<?= $basePath ?>/index.php">trang chủ</a> để tiếp tục xem sản phẩm.
-    </p>
-</section>
-<?php require __DIR__ . '/partials/footer.php'; ?>
->>>>>>> ad1105a123b1ff4fdf74b866336060b9d899c96f
-<?php require __DIR__ . '/partials/header.php'; ?>
-<div class="container mt-4 mb-5">
-    <h2 class="mb-4 border-bottom pb-2">Giỏ hàng của bạn</h2>
-    <?php if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])): ?>
-        <div class="alert alert-warning text-center shadow-sm py-5" role="alert">
-            <h5 class="mb-3 text-secondary">Giỏ hàng của bạn đang trống!</h5>
-            <a href="index.php" class="btn btn-primary px-4 mt-2">Tiếp tục mua sắm</a>
+<section class="container py-5">
+    <h1 class="h3 fw-bold mb-4">Giỏ hàng của bạn</h1>
+
+    <?php if ($message): ?>
+        <div class="alert alert-<?= htmlspecialchars($messageType, ENT_QUOTES, 'UTF-8') ?>">
+            <?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (empty($items)): ?>
+        <!-- Trạng thái giỏ hàng trống -->
+        <div class="text-center py-5">
+            <p class="fs-1 mb-3">🛒</p>
+            <p class="fs-5 text-secondary mb-4">Giỏ hàng của bạn đang trống.</p>
+            <a href="<?= $basePath ?>/index.php" class="btn btn-primary">Tiếp tục mua sắm</a>
         </div>
     <?php else: ?>
-        <div class="table-responsive shadow-sm bg-white rounded">
-            <table class="table table-hover table-bordered align-middle text-center mb-0">
-                <thead class="table-light">
+
+        <!-- Bảng giỏ hàng: hiển thị từ màn hình md trở lên -->
+        <div class="table-responsive d-none d-md-block">
+            <table class="table align-middle cart-table">
+                <thead>
                     <tr>
                         <th>Sản phẩm</th>
-                        <th>Giá</th>
-                        <th style="width: 150px;">Số lượng</th>
-                        <th>Thành tiền</th>
-                        <th>Thao tác</th>
+                        <th class="text-end">Đơn giá</th>
+                        <th class="text-center" style="width:170px;">Số lượng</th>
+                        <th class="text-end">Thành tiền</th>
+                        <th class="text-end"></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php 
-                    $totalPrice = 0; 
-                    foreach ($_SESSION['cart'] as $id => $item): 
-                        $subTotal = $item['price'] * $item['quantity'];
-                        $totalPrice += $subTotal;
-                    ?>
-                        <tr>
-                            <td class="text-start fw-medium"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></td>
-                            <td><?= number_format((float)$item['price'], 0, ',', '.') ?> đ</td>
-                            <td>
-                                <form action="index.php?action=update_cart" method="POST" class="d-flex justify-content-center align-items-center mb-0">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars((string)$id, ENT_QUOTES, 'UTF-8') ?>">
-                                    <button type="submit" name="update_action" value="decrease" class="btn btn-outline-secondary btn-sm px-2">-</button>
-                                    <input type="number" name="quantity" class="form-control form-control-sm text-center mx-1 border-secondary" value="<?= (int)$item['quantity'] ?>" readonly>
-                                    <button type="submit" name="update_action" value="increase" class="btn btn-outline-secondary btn-sm px-2">+</button>
+                <?php foreach ($items as $item): ?>
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <img
+                                    src="<?= $item['image_path']
+                                        ? htmlspecialchars($basePath . '/uploads/' . $item['image_path'], ENT_QUOTES, 'UTF-8')
+                                        : $basePath . '/assets/img/product-placeholder.png' ?>"
+                                    class="rounded border cart-thumb"
+                                    alt="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>">
+                                <span class="fw-medium"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                            </div>
+                        </td>
+                        <td class="text-end"><?= number_format($item['price'], 0, ',', '.') ?> đ</td>
+                        <td>
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <form method="post" action="cart.php">
+                                    <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                    <button type="submit" name="action" value="decrease"
+                                            class="btn btn-outline-secondary btn-sm qty-btn"
+                                            aria-label="Giảm số lượng">−</button>
                                 </form>
-                            </td>
-                            <td class="fw-bold text-danger"><?= number_format((float)$subTotal, 0, ',', '.') ?> đ</td>
-                            <td>
-                                <form action="index.php?action=remove_cart" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa sản phẩm này khỏi giỏ?')" class="mb-0">
-                                    <input type="hidden" name="id" value="<?= htmlspecialchars((string)$id, ENT_QUOTES, 'UTF-8') ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Xóa</button>
+                                <span class="px-2 fw-semibold"><?= $item['quantity'] ?></span>
+                                <form method="post" action="cart.php">
+                                    <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                    <button type="submit" name="action" value="increase"
+                                            class="btn btn-outline-secondary btn-sm qty-btn"
+                                            aria-label="Tăng số lượng"
+                                            <?= $item['quantity'] >= $item['stock'] ? 'disabled' : '' ?>>+</button>
                                 </form>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                            </div>
+                            <?php if ($item['quantity'] >= $item['stock']): ?>
+                                <p class="text-center text-muted small mb-0 mt-1">Đã đạt tồn kho tối đa</p>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-end fw-semibold text-danger"><?= number_format($item['subtotal'], 0, ',', '.') ?> đ</td>
+                        <td class="text-end">
+                            <form method="post" action="cart.php">
+                                <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                <button type="submit" name="action" value="remove" class="btn btn-outline-danger btn-sm">Xoá</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 p-3 bg-light rounded shadow-sm">
-            <a href="index.php" class="btn btn-outline-secondary mb-3 mb-md-0"><i class="bi bi-arrow-left"></i> Tiếp tục mua sắm</a>
-            <div class="text-end">
-                <h4 class="mb-2">Tổng tiền: <span class="text-danger fw-bold fs-3"><?= number_format((float)$totalPrice, 0, ',', '.') ?> đ</span></h4>
-                <button class="btn btn-success px-5 py-2 fw-bold">Tiến hành thanh toán</button>
+
+        <!-- Danh sách dạng thẻ: hiển thị trên màn hình nhỏ -->
+        <div class="d-md-none">
+            <?php foreach ($items as $item): ?>
+                <div class="card mb-3 cart-item-card">
+                    <div class="card-body">
+                        <div class="d-flex gap-3">
+                            <img
+                                src="<?= $item['image_path']
+                                    ? htmlspecialchars($basePath . '/uploads/' . $item['image_path'], ENT_QUOTES, 'UTF-8')
+                                    : $basePath . '/assets/img/product-placeholder.png' ?>"
+                                class="rounded border cart-thumb flex-shrink-0"
+                                alt="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>">
+                            <div class="flex-grow-1">
+                                <p class="fw-medium mb-1"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></p>
+                                <p class="text-secondary small mb-2"><?= number_format($item['price'], 0, ',', '.') ?> đ / sản phẩm</p>
+
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <form method="post" action="cart.php">
+                                            <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                            <button type="submit" name="action" value="decrease"
+                                                    class="btn btn-outline-secondary btn-sm qty-btn"
+                                                    aria-label="Giảm số lượng">−</button>
+                                        </form>
+                                        <span class="px-2 fw-semibold"><?= $item['quantity'] ?></span>
+                                        <form method="post" action="cart.php">
+                                            <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                            <button type="submit" name="action" value="increase"
+                                                    class="btn btn-outline-secondary btn-sm qty-btn"
+                                                    aria-label="Tăng số lượng"
+                                                    <?= $item['quantity'] >= $item['stock'] ? 'disabled' : '' ?>>+</button>
+                                        </form>
+                                    </div>
+                                    <form method="post" action="cart.php">
+                                        <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                        <button type="submit" name="action" value="remove" class="btn btn-outline-danger btn-sm">Xoá</button>
+                                    </form>
+                                </div>
+
+                                <p class="text-end fw-semibold text-danger mt-2 mb-0">
+                                    <?= number_format($item['subtotal'], 0, ',', '.') ?> đ
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Tổng kết giỏ hàng -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mt-4 gap-3 border-top pt-4">
+            <form method="post" action="cart.php" onsubmit="return confirm('Xoá toàn bộ giỏ hàng?');">
+                <button type="submit" name="action" value="clear" class="btn btn-outline-secondary btn-sm">
+                    Xoá toàn bộ giỏ hàng
+                </button>
+            </form>
+
+            <div class="text-md-end">
+                <p class="mb-1 text-secondary">Tổng tiền dự kiến</p>
+                <p class="fs-3 fw-bold text-danger mb-2"><?= number_format($total, 0, ',', '.') ?> đ</p>
+                <button type="button" class="btn btn-primary" disabled title="Chức năng thanh toán đang được phát triển">
+                    Tiến hành đặt hàng
+                </button>
             </div>
         </div>
     <?php endif; ?>
-</div>
+</section>
 <?php require __DIR__ . '/partials/footer.php'; ?>
