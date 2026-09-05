@@ -2,209 +2,223 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/Product.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/Cart.php';
 
-/**
- * Quản lý giỏ hàng lưu trong session.
- * Cấu trúc lưu trữ: $_SESSION['cart'] = [ product_id => quantity, ... ]
- */
-final class Cart
-{
-    private const SESSION_KEY = 'cart';
+$pageTitle = 'Giỏ hàng';
 
-    /** Đảm bảo session đã khởi động và key giỏ hàng tồn tại */
-    private static function ensureSession(): void
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        if (!isset($_SESSION[self::SESSION_KEY]) || !is_array($_SESSION[self::SESSION_KEY])) {
-            $_SESSION[self::SESSION_KEY] = [];
-        }
+// Đường dẫn tương đối của chính trang này, dùng để redirect sau khi xử lý form
+$selfPath = 'cart.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    $productId = (int) ($_POST['product_id'] ?? 0);
+    $result = null;
+
+    switch ($action) {
+        case 'add':
+            $quantity = max(1, (int) ($_POST['quantity'] ?? 1));
+            $result = Cart::add($productId, $quantity);
+            break;
+
+        case 'increase':
+            $result = Cart::increase($productId);
+            break;
+
+        case 'decrease':
+            $result = Cart::decrease($productId);
+            break;
+
+        case 'remove':
+            Cart::remove($productId);
+            $result = ['success' => true, 'message' => 'Đã xoá sản phẩm khỏi giỏ hàng.'];
+            break;
+
+        case 'clear':
+            Cart::clear();
+            $result = ['success' => true, 'message' => 'Đã xoá toàn bộ giỏ hàng.'];
+            break;
     }
 
-    private static function getRawCart(): array
-    {
-        self::ensureSession();
-        return $_SESSION[self::SESSION_KEY];
+    // Cho phép các trang khác (vd. product-detail.php) chỉ định nơi quay lại
+    // sau khi thêm vào giỏ, nhưng chỉ chấp nhận đường dẫn .php nội bộ để tránh
+    // rủi ro open-redirect.
+    $redirectTo = $selfPath;
+    if (
+        !empty($_POST['redirect'])
+        && preg_match('#^[a-zA-Z0-9_\-\/]+\.php(?:\?[a-zA-Z0-9=&%._\-\[\]]*)?$#', (string) $_POST['redirect'])
+    ) {
+        $redirectTo = $_POST['redirect'];
     }
 
-    private static function saveRawCart(array $cart): void
-    {
-        self::ensureSession();
-        $_SESSION[self::SESSION_KEY] = $cart;
+    if ($result !== null) {
+        $separator = str_contains($redirectTo, '?') ? '&' : '?';
+        $redirectTo .= $separator . ($result['success'] ? 'msg=' : 'error=') . urlencode($result['message']);
     }
 
-    /**
-     * Thêm sản phẩm vào giỏ. Nếu đã có, cộng dồn số lượng.
-     * Số lượng cuối cùng không được vượt quá tồn kho.
-     */
-    public static function add(int $productId, int $quantity = 1): array
-    {
-        $quantity = max(1, $quantity);
-
-        $product = Product::findById($productId);
-        if (!$product || (int) $product['status'] !== 1) {
-            return ['success' => false, 'message' => 'Sản phẩm không tồn tại hoặc đã ngừng kinh doanh.'];
-        }
-
-        $stock = (int) $product['stock'];
-        if ($stock <= 0) {
-            return ['success' => false, 'message' => 'Sản phẩm hiện đã hết hàng.'];
-        }
-
-        $cart = self::getRawCart();
-        $current = (int) ($cart[$productId] ?? 0);
-        $requested = $current + $quantity;
-        $final = min($requested, $stock);
-
-        $cart[$productId] = $final;
-        self::saveRawCart($cart);
-
-        if ($requested > $stock) {
-            return [
-                'success' => true,
-                'message' => "Đã thêm vào giỏ, số lượng được giới hạn theo tồn kho hiện có ({$stock}).",
-            ];
-        }
-
-        return ['success' => true, 'message' => 'Đã thêm sản phẩm vào giỏ hàng.'];
-    }
-
-    /** Tăng số lượng một sản phẩm trong giỏ (không vượt quá tồn kho) */
-    public static function increase(int $productId, int $step = 1): array
-    {
-        $cart = self::getRawCart();
-
-        if (!isset($cart[$productId])) {
-            return self::add($productId, $step);
-        }
-
-        $product = Product::findById($productId);
-        if (!$product || (int) $product['status'] !== 1) {
-            unset($cart[$productId]);
-            self::saveRawCart($cart);
-            return ['success' => false, 'message' => 'Sản phẩm không còn tồn tại và đã được gỡ khỏi giỏ hàng.'];
-        }
-
-        $stock = (int) $product['stock'];
-        $newQty = (int) $cart[$productId] + $step;
-
-        if ($newQty > $stock) {
-            $cart[$productId] = $stock;
-            self::saveRawCart($cart);
-            return ['success' => false, 'message' => "Số lượng không thể vượt quá tồn kho ({$stock})."];
-        }
-
-        $cart[$productId] = $newQty;
-        self::saveRawCart($cart);
-        return ['success' => true, 'message' => 'Đã cập nhật số lượng.'];
-    }
-
-    /** Giảm số lượng một sản phẩm trong giỏ; nếu về 0 thì tự xoá */
-    public static function decrease(int $productId, int $step = 1): array
-    {
-        $cart = self::getRawCart();
-
-        if (!isset($cart[$productId])) {
-            return ['success' => false, 'message' => 'Sản phẩm không có trong giỏ hàng.'];
-        }
-
-        $newQty = (int) $cart[$productId] - $step;
-
-        if ($newQty <= 0) {
-            unset($cart[$productId]);
-            self::saveRawCart($cart);
-            return ['success' => true, 'message' => 'Đã xoá sản phẩm khỏi giỏ hàng.'];
-        }
-
-        $cart[$productId] = $newQty;
-        self::saveRawCart($cart);
-        return ['success' => true, 'message' => 'Đã cập nhật số lượng.'];
-    }
-
-    /** Xoá một sản phẩm khỏi giỏ hàng */
-    public static function remove(int $productId): void
-    {
-        $cart = self::getRawCart();
-        unset($cart[$productId]);
-        self::saveRawCart($cart);
-    }
-
-    /** Xoá toàn bộ giỏ hàng */
-    public static function clear(): void
-    {
-        self::saveRawCart([]);
-    }
-
-    /**
-     * Lấy danh sách sản phẩm trong giỏ kèm thông tin chi tiết (tên, giá, ảnh, tồn kho).
-     * Tự động dọn dẹp sản phẩm đã bị xoá/ngừng bán hoặc vượt tồn kho.
-     */
-    public static function getItems(): array
-    {
-        $cart = self::getRawCart();
-        $result = [];
-        $changed = false;
-
-        foreach ($cart as $productId => $quantity) {
-            $product = Product::findById((int) $productId);
-
-            if (!$product || (int) $product['status'] !== 1) {
-                unset($cart[$productId]);
-                $changed = true;
-                continue;
-            }
-
-            $stock = (int) $product['stock'];
-            $quantity = (int) $quantity;
-
-            if ($stock <= 0) {
-                unset($cart[$productId]);
-                $changed = true;
-                continue;
-            }
-
-            if ($quantity > $stock) {
-                $quantity = $stock;
-                $cart[$productId] = $quantity;
-                $changed = true;
-            }
-
-            $price = (float) $product['price'];
-
-            $result[] = [
-                'product_id' => (int) $product['id'],
-                'name'       => $product['name'],
-                'image_path' => $product['image_path'] ?? null,
-                'price'      => $price,
-                'stock'      => $stock,
-                'quantity'   => $quantity,
-                'subtotal'   => $price * $quantity,
-            ];
-        }
-
-        if ($changed) {
-            self::saveRawCart($cart);
-        }
-
-        return $result;
-    }
-
-    /** Tổng số lượng sản phẩm trong giỏ (dùng cho badge trên header) */
-    public static function getTotalQuantity(): int
-    {
-        $cart = self::getRawCart();
-        return array_sum(array_map('intval', $cart));
-    }
-
-    /** Tổng tiền dự kiến của giỏ hàng */
-    public static function getTotalAmount(): float
-    {
-        $total = 0.0;
-        foreach (self::getItems() as $item) {
-            $total += $item['subtotal'];
-        }
-        return $total;
-    }
+    header('Location: ' . $redirectTo);
+    exit;
 }
+
+$message = null;
+$messageType = 'success';
+if (isset($_GET['msg'])) {
+    $message = $_GET['msg'];
+    $messageType = 'success';
+} elseif (isset($_GET['error'])) {
+    $message = $_GET['error'];
+    $messageType = 'danger';
+}
+
+$items = Cart::getItems();
+$total = Cart::getTotalAmount();
+
+require __DIR__ . '/partials/header.php';
+?>
+<section class="container py-5">
+    <h1 class="h3 fw-bold mb-4">Giỏ hàng của bạn</h1>
+
+    <?php if ($message): ?>
+        <div class="alert alert-<?= htmlspecialchars($messageType, ENT_QUOTES, 'UTF-8') ?>">
+            <?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (empty($items)): ?>
+        <!-- Trạng thái giỏ hàng trống -->
+        <div class="text-center py-5">
+            <p class="fs-1 mb-3">🛒</p>
+            <p class="fs-5 text-secondary mb-4">Giỏ hàng của bạn đang trống.</p>
+            <a href="<?= $basePath ?>/index.php" class="btn btn-primary">Tiếp tục mua sắm</a>
+        </div>
+    <?php else: ?>
+
+        <!-- Bảng giỏ hàng: hiển thị từ màn hình md trở lên -->
+        <div class="table-responsive d-none d-md-block">
+            <table class="table align-middle cart-table">
+                <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th class="text-end">Đơn giá</th>
+                        <th class="text-center" style="width:170px;">Số lượng</th>
+                        <th class="text-end">Thành tiền</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($items as $item): ?>
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <img
+                                    src="<?= $item['image_path']
+                                        ? htmlspecialchars($basePath . '/uploads/' . $item['image_path'], ENT_QUOTES, 'UTF-8')
+                                        : $basePath . '/assets/img/product-placeholder.png' ?>"
+                                    class="rounded border cart-thumb"
+                                    alt="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>">
+                                <span class="fw-medium"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                            </div>
+                        </td>
+                        <td class="text-end"><?= number_format($item['price'], 0, ',', '.') ?> đ</td>
+                        <td>
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <form method="post" action="cart.php">
+                                    <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                    <button type="submit" name="action" value="decrease"
+                                            class="btn btn-outline-secondary btn-sm qty-btn"
+                                            aria-label="Giảm số lượng">−</button>
+                                </form>
+                                <span class="px-2 fw-semibold"><?= $item['quantity'] ?></span>
+                                <form method="post" action="cart.php">
+                                    <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                    <button type="submit" name="action" value="increase"
+                                            class="btn btn-outline-secondary btn-sm qty-btn"
+                                            aria-label="Tăng số lượng"
+                                            <?= $item['quantity'] >= $item['stock'] ? 'disabled' : '' ?>>+</button>
+                                </form>
+                            </div>
+                            <?php if ($item['quantity'] >= $item['stock']): ?>
+                                <p class="text-center text-muted small mb-0 mt-1">Đã đạt tồn kho tối đa</p>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-end fw-semibold text-danger"><?= number_format($item['subtotal'], 0, ',', '.') ?> đ</td>
+                        <td class="text-end">
+                            <form method="post" action="cart.php">
+                                <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                <button type="submit" name="action" value="remove" class="btn btn-outline-danger btn-sm">Xoá</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Danh sách dạng thẻ: hiển thị trên màn hình nhỏ -->
+        <div class="d-md-none">
+            <?php foreach ($items as $item): ?>
+                <div class="card mb-3 cart-item-card">
+                    <div class="card-body">
+                        <div class="d-flex gap-3">
+                            <img
+                                src="<?= $item['image_path']
+                                    ? htmlspecialchars($basePath . '/uploads/' . $item['image_path'], ENT_QUOTES, 'UTF-8')
+                                    : $basePath . '/assets/img/product-placeholder.png' ?>"
+                                class="rounded border cart-thumb flex-shrink-0"
+                                alt="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>">
+                            <div class="flex-grow-1">
+                                <p class="fw-medium mb-1"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></p>
+                                <p class="text-secondary small mb-2"><?= number_format($item['price'], 0, ',', '.') ?> đ / sản phẩm</p>
+
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <form method="post" action="cart.php">
+                                            <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                            <button type="submit" name="action" value="decrease"
+                                                    class="btn btn-outline-secondary btn-sm qty-btn"
+                                                    aria-label="Giảm số lượng">−</button>
+                                        </form>
+                                        <span class="px-2 fw-semibold"><?= $item['quantity'] ?></span>
+                                        <form method="post" action="cart.php">
+                                            <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                            <button type="submit" name="action" value="increase"
+                                                    class="btn btn-outline-secondary btn-sm qty-btn"
+                                                    aria-label="Tăng số lượng"
+                                                    <?= $item['quantity'] >= $item['stock'] ? 'disabled' : '' ?>>+</button>
+                                        </form>
+                                    </div>
+                                    <form method="post" action="cart.php">
+                                        <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                                        <button type="submit" name="action" value="remove" class="btn btn-outline-danger btn-sm">Xoá</button>
+                                    </form>
+                                </div>
+
+                                <p class="text-end fw-semibold text-danger mt-2 mb-0">
+                                    <?= number_format($item['subtotal'], 0, ',', '.') ?> đ
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Tổng kết giỏ hàng -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mt-4 gap-3 border-top pt-4">
+            <form method="post" action="cart.php" onsubmit="return confirm('Xoá toàn bộ giỏ hàng?');">
+                <button type="submit" name="action" value="clear" class="btn btn-outline-secondary btn-sm">
+                    Xoá toàn bộ giỏ hàng
+                </button>
+            </form>
+
+            <div class="text-md-end">
+                <p class="mb-1 text-secondary">Tổng tiền dự kiến</p>
+                <p class="fs-3 fw-bold text-danger mb-2"><?= number_format($total, 0, ',', '.') ?> đ</p>
+                <button type="button" class="btn btn-primary" disabled title="Chức năng thanh toán đang được phát triển">
+                    Tiến hành đặt hàng
+                </button>
+            </div>
+        </div>
+    <?php endif; ?>
+</section>
+<?php require __DIR__ . '/partials/footer.php'; ?>
