@@ -14,6 +14,7 @@ require_once __DIR__ . '/controllers/HomeController.php';
 require_once __DIR__ . '/controllers/ProductController.php';
 require_once __DIR__ . '/controllers/CategoryController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
+require_once __DIR__ . '/controllers/OrderController.php';
 require_once __DIR__ . '/middleware/AuthMiddleware.php';
 
 // Lấy kết nối PDO từ hàm database()
@@ -45,6 +46,10 @@ switch ($action) {
 
     case 'logout':
         (new AuthController($pdo))->logout();
+        break;
+
+    case 'order-store':
+        (new OrderController($pdo))->store();
         break;
 
     // ==========================================
