@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/ProductModel.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
 class ProductController {
     private $productModel;
@@ -10,26 +11,9 @@ class ProductController {
             session_start();
         }
 
-        // 2. Kiểm tra đăng nhập và phân quyền Admin (SHOP-9 & SHOP-10)
-        $this->checkAdminAuth();
+        AuthMiddleware::requireAdmin();
 
         $this->productModel = new ProductModel($pdo);
-    }
-
-    /**
-     * Middleware kiểm tra quyền Admin
-     */
-    private function checkAdminAuth() {
-        if (!isset($_SESSION['user'])) {
-            header("Location: index.php?action=login&error=" . urlencode("Vui lòng đăng nhập để tiếp tục!"));
-            exit;
-        }
-
-        $userRole = $_SESSION['user']['role'] ?? '';
-        if ($userRole !== 'admin' && $userRole !== 1 && $userRole !== '1') {
-            header("Location: index.php?error=" . urlencode("Bạn không có quyền truy cập trang quản trị!"));
-            exit;
-        }
     }
 
     private function createSlug($str) {

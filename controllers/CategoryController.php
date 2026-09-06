@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/CategoryModel.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
 class CategoryController {
     private $categoryModel;
@@ -9,21 +10,8 @@ class CategoryController {
             session_start();
         }
 
-        $this->checkAdminAuth();
+        AuthMiddleware::requireAdmin();
         $this->categoryModel = new CategoryModel($pdo);
-    }
-
-    private function checkAdminAuth() {
-        if (!isset($_SESSION['user'])) {
-            header('Location: index.php?action=login&error=' . urlencode('Vui lòng đăng nhập để tiếp tục!'));
-            exit;
-        }
-
-        $role = $_SESSION['user']['role'] ?? '';
-        if ($role !== 'admin' && $role !== 1 && $role !== '1') {
-            header('Location: index.php?error=' . urlencode('Bạn không có quyền truy cập trang quản trị!'));
-            exit;
-        }
     }
 
     private function createSlug($value) {
