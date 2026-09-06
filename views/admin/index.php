@@ -1,3 +1,13 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
+    header('Location: ../../index.php?action=login&error=' . urlencode('Bạn không có quyền truy cập trang quản trị.'));
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>

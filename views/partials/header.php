@@ -15,6 +15,10 @@ if ($documentRoot && $projectRoot && str_starts_with($projectRoot, $documentRoot
 
 require_once __DIR__ . '/../../models/Cart.php';
 $cartCount = Cart::getTotalQuantity();
+
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 ?>
 <!doctype html>
 <html lang="vi">
@@ -52,6 +56,29 @@ $cartCount = Cart::getTotalQuantity();
                         <?php endif; ?>
                     </a>
                 </li>
+                <?php if (isset($_SESSION['user'])): ?>
+                    <?php if (($_SESSION['user']['role'] ?? '') === 'admin'): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?= $basePath ?>/index.php?action=admin">Quản trị</a>
+                        </li>
+                    <?php endif; ?>
+                    <li class="nav-item d-flex align-items-center ms-lg-2">
+                        <span class="navbar-text me-2">
+                            <?= htmlspecialchars((string) ($_SESSION['user']['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+                        <form method="post" action="<?= $basePath ?>/index.php?action=logout" class="m-0">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
+                            <button type="submit" class="btn btn-outline-light btn-sm">Đăng xuất</button>
+                        </form>
+                    </li>
+                <?php else: ?>
+                    <li class="nav-item ms-lg-2">
+                        <a class="nav-link" href="<?= $basePath ?>/index.php?action=login">Đăng nhập</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= $basePath ?>/index.php?action=register">Đăng ký</a>
+                    </li>
+                <?php endif; ?>
             </ul>
         </div>
     </div>

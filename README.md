@@ -18,6 +18,19 @@ Bài tập nhóm cuối kỳ môn Lập trình Web, xây dựng bằng PHP thu�
 5. Chọn **Import** và nhập file `database/database.sql`.
 6. Mở `http://localhost/web-ban-hang-nhom-6`.
 
+Tài khoản quản trị mẫu sau khi import database:
+
+- Email: `admin@nhom6.local`
+- Mật khẩu: `Admin@123`
+
+Có thể tạo lại toàn bộ database cùng dữ liệu mẫu cho SHOP-17 bằng lệnh:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+Lệnh tạo một admin, một customer, các danh mục mẫu và tối thiểu 15 sản phẩm mẫu.
+
 Thông tin kết nối mặc định dành cho XAMPP nằm trong `config/database.php`. Nếu máy dùng cổng hoặc tài khoản khác, sao chép `config/database.local.example.php` thành `config/database.local.php` rồi chỉnh lại. File cục bộ này không được commit lên GitHub.
 
 ## Quy trình Git

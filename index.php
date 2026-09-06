@@ -13,6 +13,9 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/controllers/HomeController.php';
 require_once __DIR__ . '/controllers/ProductController.php';
 require_once __DIR__ . '/controllers/CategoryController.php';
+require_once __DIR__ . '/controllers/AuthController.php';
+require_once __DIR__ . '/controllers/OrderController.php';
+require_once __DIR__ . '/middleware/AuthMiddleware.php';
 
 // Lấy kết nối PDO từ hàm database()
 $pdo = database();
@@ -20,11 +23,40 @@ $pdo = database();
 // Lấy tham số action từ URL (mặc định quay về 'home')
 $action = $_GET['action'] ?? 'home';
 
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 switch ($action) {
+    case 'register':
+        (new AuthController($pdo))->showRegister();
+        break;
+
+    case 'register-submit':
+        (new AuthController($pdo))->register();
+        break;
+
+    case 'login':
+        (new AuthController($pdo))->showLogin();
+        break;
+
+    case 'login-submit':
+        (new AuthController($pdo))->login();
+        break;
+
+    case 'logout':
+        (new AuthController($pdo))->logout();
+        break;
+
+    case 'order-store':
+        (new OrderController($pdo))->store();
+        break;
+
     // ==========================================
     // 0. Trang Dashboard Quản trị trung tâm (Admin Index)
     // ==========================================
     case 'admin':
+        AuthMiddleware::requireAdmin();
         require_once __DIR__ . '/views/admin/index.php';
         break;
 
