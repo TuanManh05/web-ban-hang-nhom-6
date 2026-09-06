@@ -214,9 +214,7 @@ require __DIR__ . '/partials/header.php';
             <div class="text-md-end">
                 <p class="mb-1 text-secondary">Tổng tiền dự kiến</p>
                 <p class="fs-3 fw-bold text-danger mb-2"><?= number_format($total, 0, ',', '.') ?> đ</p>
-                <button type="button" class="btn btn-primary" disabled title="Chức năng thanh toán đang được phát triển">
-                    Tiến hành đặt hàng
-                </button>
+                <a href="checkout.php" class="btn btn-primary">Tiến hành đặt hàng</a>
             </div>
         </div>
     <?php endif; ?>
