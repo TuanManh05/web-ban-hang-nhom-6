@@ -10,3 +10,30 @@ main { flex: 1; }
 .hero {
     background: radial-gradient(circle at top, #dbeafe, transparent 55%);
 }
+
+/* ---- Bổ sung cho SHOP-13 / SHOP-14 ---- */
+.product-card {
+    border: 1px solid #e2e8f0;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0.75rem 1.5rem rgba(15, 23, 42, 0.08);
+}
+
+.product-card .card-img-top {
+    height: 200px;
+    object-fit: cover;
+    background: #f1f5f9;
+}
+
+@media (max-width: 576px) {
+    .hero h1 {
+        font-size: 1.6rem;
+    }
+
+    .product-card .card-img-top {
+        height: 140px;
+    }
+}

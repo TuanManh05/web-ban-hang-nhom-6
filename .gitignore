@@ -1,6 +1,9 @@
 /.vscode/
 /.idea/
 /.env
+/vendor/
+/storage/
+/bootstrap/cache/
 /config/database.local.php
 /uploads/*
 !/uploads/.gitkeep
