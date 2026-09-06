@@ -1,9 +1,15 @@
 /.vscode/
 /.idea/
 /.env
+/vendor/
+/storage/
+/bootstrap/cache/
 /config/database.local.php
 /uploads/*
 !/uploads/.gitkeep
 *.log
 .DS_Store
 Thumbs.db
+*.sqlite
+*.db
+database/database.sqlite
