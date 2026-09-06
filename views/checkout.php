@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Cart.php';
-require_once __DIR__ . '/../models/Order.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $pageTitle = 'Thanh toán';
 
@@ -16,63 +19,24 @@ if (empty($items)) {
     exit;
 }
 
-$errors = [];
-$old = [
+// OrderController chỉ kiểm tra csrf_token, không tự sinh — nếu chưa có thì tạo ở đây
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrfToken = $_SESSION['csrf_token'];
+
+// Lỗi & dữ liệu cũ do OrderController::store() lưu vào session trước khi redirect về
+$errors = $_SESSION['checkout_errors'] ?? [];
+$old = $_SESSION['checkout_old'] ?? [
     'name'    => '',
     'phone'   => '',
     'address' => '',
     'note'    => '',
 ];
+unset($_SESSION['checkout_errors'], $_SESSION['checkout_old']);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $old['name']    = trim((string) ($_POST['name'] ?? ''));
-    $old['phone']   = trim((string) ($_POST['phone'] ?? ''));
-    $old['address'] = trim((string) ($_POST['address'] ?? ''));
-    $old['note']    = trim((string) ($_POST['note'] ?? ''));
-
-    if ($old['name'] === '') {
-        $errors['name'] = 'Vui lòng nhập họ tên.';
-    } elseif (mb_strlen($old['name']) > 100) {
-        $errors['name'] = 'Họ tên không được vượt quá 100 ký tự.';
-    }
-
-    if ($old['phone'] === '') {
-        $errors['phone'] = 'Vui lòng nhập số điện thoại.';
-    } elseif (!preg_match('/^(0|\+84)[0-9]{9,10}$/', $old['phone'])) {
-        $errors['phone'] = 'Số điện thoại không hợp lệ (vd: 0912345678).';
-    }
-
-    if ($old['address'] === '') {
-        $errors['address'] = 'Vui lòng nhập địa chỉ nhận hàng.';
-    } elseif (mb_strlen($old['address']) > 255) {
-        $errors['address'] = 'Địa chỉ không được vượt quá 255 ký tự.';
-    }
-
-    if (mb_strlen($old['note']) > 500) {
-        $errors['note'] = 'Ghi chú không được vượt quá 500 ký tự.';
-    }
-
-    // Kiểm tra lại giỏ hàng ngay trước khi đặt (đề phòng tồn kho vừa thay đổi)
-    $items = Cart::getItems();
-    if (empty($items)) {
-        header('Location: cart.php?error=' . urlencode('Giỏ hàng đang trống, không thể thanh toán.'));
-        exit;
-    }
-
-    if (empty($errors)) {
-        $total = Cart::getTotalAmount();
-        try {
-            $orderId = Order::create($old, $items, $total);
-            Cart::clear();
-            header('Location: checkout-success.php?order=' . $orderId);
-            exit;
-        } catch (\Throwable $e) {
-            $errors['general'] = $e->getMessage() !== ''
-                ? $e->getMessage()
-                : 'Đặt hàng thất bại, vui lòng thử lại.';
-        }
-    }
-}
+// Một số lỗi (vd. giỏ hàng trống, lỗi hệ thống) được OrderController gửi qua query string
+$generalError = $_GET['error'] ?? null;
 
 $total = Cart::getTotalAmount();
 
@@ -81,54 +45,44 @@ require __DIR__ . '/partials/header.php';
 <section class="container py-5">
     <h1 class="h3 fw-bold mb-4">Thanh toán</h1>
 
-    <?php if (!empty($errors['general'])): ?>
-        <div class="alert alert-danger"><?= htmlspecialchars($errors['general'], ENT_QUOTES, 'UTF-8') ?></div>
-    <?php endif; ?>
-
-    <?php if (!empty($errors) && empty($errors['general'])): ?>
-        <div class="alert alert-danger">Vui lòng kiểm tra lại các trường được đánh dấu bên dưới.</div>
+    <?php if ($generalError): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($generalError, ENT_QUOTES, 'UTF-8') ?></div>
+    <?php elseif (!empty($errors)): ?>
+        <div class="alert alert-danger">
+            <ul class="mb-0 ps-3">
+                <?php foreach ($errors as $err): ?>
+                    <li><?= htmlspecialchars($err, ENT_QUOTES, 'UTF-8') ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
     <?php endif; ?>
 
     <div class="row g-4">
         <div class="col-lg-7 order-2 order-lg-1">
-            <form method="post" action="checkout.php" novalidate>
+            <form method="post" action="../index.php?action=order-store" novalidate>
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+
                 <div class="mb-3">
-                    <label for="name" class="form-label">Họ và tên <span class="text-danger">*</span></label>
-                    <input type="text" id="name" name="name"
-                           class="form-control <?= isset($errors['name']) ? 'is-invalid' : '' ?>"
-                           value="<?= htmlspecialchars($old['name'], ENT_QUOTES, 'UTF-8') ?>">
-                    <?php if (isset($errors['name'])): ?>
-                        <div class="invalid-feedback"><?= htmlspecialchars($errors['name'], ENT_QUOTES, 'UTF-8') ?></div>
-                    <?php endif; ?>
+                    <label for="customer_name" class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                    <input type="text" id="customer_name" name="customer_name" class="form-control"
+                           value="<?= htmlspecialchars($old['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
 
                 <div class="mb-3">
                     <label for="phone" class="form-label">Số điện thoại <span class="text-danger">*</span></label>
-                    <input type="text" id="phone" name="phone"
-                           class="form-control <?= isset($errors['phone']) ? 'is-invalid' : '' ?>"
-                           value="<?= htmlspecialchars($old['phone'], ENT_QUOTES, 'UTF-8') ?>">
-                    <?php if (isset($errors['phone'])): ?>
-                        <div class="invalid-feedback"><?= htmlspecialchars($errors['phone'], ENT_QUOTES, 'UTF-8') ?></div>
-                    <?php endif; ?>
+                    <input type="text" id="phone" name="phone" class="form-control"
+                           value="<?= htmlspecialchars($old['phone'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
 
                 <div class="mb-3">
                     <label for="address" class="form-label">Địa chỉ nhận hàng <span class="text-danger">*</span></label>
-                    <input type="text" id="address" name="address"
-                           class="form-control <?= isset($errors['address']) ? 'is-invalid' : '' ?>"
-                           value="<?= htmlspecialchars($old['address'], ENT_QUOTES, 'UTF-8') ?>">
-                    <?php if (isset($errors['address'])): ?>
-                        <div class="invalid-feedback"><?= htmlspecialchars($errors['address'], ENT_QUOTES, 'UTF-8') ?></div>
-                    <?php endif; ?>
+                    <input type="text" id="address" name="address" class="form-control"
+                           value="<?= htmlspecialchars($old['address'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
 
                 <div class="mb-4">
                     <label for="note" class="form-label">Ghi chú (không bắt buộc)</label>
-                    <textarea id="note" name="note" rows="3"
-                              class="form-control <?= isset($errors['note']) ? 'is-invalid' : '' ?>"><?= htmlspecialchars($old['note'], ENT_QUOTES, 'UTF-8') ?></textarea>
-                    <?php if (isset($errors['note'])): ?>
-                        <div class="invalid-feedback"><?= htmlspecialchars($errors['note'], ENT_QUOTES, 'UTF-8') ?></div>
-                    <?php endif; ?>
+                    <textarea id="note" name="note" rows="3" class="form-control"><?= htmlspecialchars($old['note'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-lg w-100">Đặt hàng</button>
