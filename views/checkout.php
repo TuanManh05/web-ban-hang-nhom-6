@@ -9,13 +9,23 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Trang này có thể được mở qua index.php?action=checkout (URL ở gốc site),
+// nên cần tự tính $basePath ở đây để dùng cho redirect phía dưới, trước khi
+// header.php (nơi thường tính $basePath) được include.
+$documentRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
+$projectRoot = realpath(__DIR__ . '/..');
+$basePath = '';
+if ($documentRoot && $projectRoot && str_starts_with($projectRoot, $documentRoot)) {
+    $basePath = str_replace('\\', '/', substr($projectRoot, strlen($documentRoot)));
+}
+
 $pageTitle = 'Thanh toán';
 
 $items = Cart::getItems();
 
 // Không cho thanh toán khi giỏ hàng trống
 if (empty($items)) {
-    header('Location: cart.php?error=' . urlencode('Giỏ hàng đang trống, không thể thanh toán.'));
+    header('Location: ' . $basePath . '/views/cart.php?error=' . urlencode('Giỏ hàng đang trống, không thể thanh toán.'));
     exit;
 }
 
@@ -59,24 +69,24 @@ require __DIR__ . '/partials/header.php';
 
     <div class="row g-4">
         <div class="col-lg-7 order-2 order-lg-1">
-            <form method="post" action="../index.php?action=order-store" novalidate>
+            <form method="post" action="<?= $basePath ?>/index.php?action=order-store">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
 
                 <div class="mb-3">
                     <label for="customer_name" class="form-label">Họ và tên <span class="text-danger">*</span></label>
-                    <input type="text" id="customer_name" name="customer_name" class="form-control"
+                    <input type="text" id="customer_name" name="customer_name" class="form-control" required
                            value="<?= htmlspecialchars($old['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
 
                 <div class="mb-3">
                     <label for="phone" class="form-label">Số điện thoại <span class="text-danger">*</span></label>
-                    <input type="text" id="phone" name="phone" class="form-control"
+                    <input type="text" id="phone" name="phone" class="form-control" required
                            value="<?= htmlspecialchars($old['phone'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
 
                 <div class="mb-3">
                     <label for="address" class="form-label">Địa chỉ nhận hàng <span class="text-danger">*</span></label>
-                    <input type="text" id="address" name="address" class="form-control"
+                    <input type="text" id="address" name="address" class="form-control" required
                            value="<?= htmlspecialchars($old['address'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
 
@@ -114,7 +124,7 @@ require __DIR__ . '/partials/header.php';
                     </div>
                 </div>
             </div>
-            <a href="cart.php" class="btn btn-outline-secondary w-100 mt-3">&laquo; Quay lại giỏ hàng</a>
+            <a href="<?= $basePath ?>/views/cart.php" class="btn btn-outline-secondary w-100 mt-3">&laquo; Quay lại giỏ hàng</a>
         </div>
     </div>
 </section>
