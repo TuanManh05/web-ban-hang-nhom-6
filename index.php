@@ -52,6 +52,10 @@ switch ($action) {
         (new OrderController($pdo))->store();
         break;
 
+    case 'checkout':
+        require_once __DIR__ . '/views/checkout.php';
+        break;
+
     // ==========================================
     // 0. Trang Dashboard Quản trị trung tâm (Admin Index)
     // ==========================================
