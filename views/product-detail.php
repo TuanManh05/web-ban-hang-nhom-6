@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Product.php';
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
