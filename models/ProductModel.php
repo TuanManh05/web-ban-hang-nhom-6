@@ -99,5 +99,85 @@ class ProductModel {
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([$id]);
     }
+
+    // ===== Thêm cho SHOP-22 (tìm kiếm) và SHOP-23 (lọc + sắp xếp) =====
+    // Dùng cho trang danh sách sản phẩm phía khách hàng (views/products.php).
+    // Không đụng tới các hàm phía trên (đang phục vụ trang quản trị).
+
+    /**
+     * Tìm + lọc + sắp xếp + phân trang sản phẩm đang bán (status = 1),
+     * kèm ảnh đại diện (is_primary = 1) nếu có.
+     */
+    public function searchProducts(array $filters): array
+    {
+        $where = ['p.status = 1'];
+        $params = [];
+
+        if (!empty($filters['q'])) {
+            $where[] = 'p.name LIKE :keyword';
+            $params[':keyword'] = '%' . $filters['q'] . '%';
+        }
+
+        if (!empty($filters['category_id'])) {
+            $where[] = 'p.category_id = :category_id';
+            $params[':category_id'] = (int) $filters['category_id'];
+        }
+
+        $orderBy = 'p.created_at DESC';
+        if (($filters['sort'] ?? '') === 'price_asc') {
+            $orderBy = 'p.price ASC';
+        } elseif (($filters['sort'] ?? '') === 'price_desc') {
+            $orderBy = 'p.price DESC';
+        }
+
+        $limit = (int) ($filters['limit'] ?? 12);
+        $offset = (int) ($filters['offset'] ?? 0);
+
+        $sql = "SELECT p.*, c.name AS category_name, pi.image_path
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1
+                WHERE " . implode(' AND ', $where) . "
+                ORDER BY $orderBy
+                LIMIT :limit OFFSET :offset";
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Đếm tổng số sản phẩm khớp bộ lọc (dùng để tính số trang phân trang).
+     */
+    public function countSearchProducts(array $filters): int
+    {
+        $where = ['status = 1'];
+        $params = [];
+
+        if (!empty($filters['q'])) {
+            $where[] = 'name LIKE :keyword';
+            $params[':keyword'] = '%' . $filters['q'] . '%';
+        }
+
+        if (!empty($filters['category_id'])) {
+            $where[] = 'category_id = :category_id';
+            $params[':category_id'] = (int) $filters['category_id'];
+        }
+
+        $sql = 'SELECT COUNT(*) FROM products WHERE ' . implode(' AND ', $where);
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    }
 }
 ?>
