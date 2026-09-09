@@ -34,6 +34,7 @@ check($orderId > 0, 'Tạo đơn hàng thành công');
 check((int) $pdo->query('SELECT stock FROM products WHERE id = ' . (int) $product['id'])->fetchColumn() === $stockBefore - 1, 'Tạo đơn đã trừ tồn kho');
 check($orders->findForUser($orderId, (int) $customer['id']) !== null, 'Chủ đơn xem được chi tiết đơn');
 check($orders->findForUser($orderId, 999999) === null, 'Tài khoản khác không xem được đơn');
+check(!$orders->cancelForUser($orderId, 999999), 'Tài khoản khác không hủy được đơn');
 check($orders->cancelForUser($orderId, (int) $customer['id']), 'Khách hủy được đơn pending của mình');
 check((int) $pdo->query('SELECT stock FROM products WHERE id = ' . (int) $product['id'])->fetchColumn() === $stockBefore, 'Hủy đơn đã hoàn lại tồn kho');
 check(!$orders->cancelForUser($orderId, (int) $customer['id']), 'Không thể hủy lại đơn đã hủy');
@@ -45,9 +46,31 @@ check($orders->updateStatus($orderId2, 'shipping'), 'Admin chuyển confirmed sa
 check($orders->updateStatus($orderId2, 'completed'), 'Admin chuyển shipping sang completed');
 check(!$orders->cancelForUser($orderId2, (int) $customer['id']), 'Khách không hủy được đơn completed');
 
+$stockBeforeAdminCancel = (int) $pdo->query('SELECT stock FROM products WHERE id = ' . (int) $product['id'])->fetchColumn();
+$orderId3 = $orders->createFromCart((int) $customer['id'], ['name' => 'Khách lọc đơn', 'phone' => '0911222333', 'address' => 'Địa chỉ lọc đơn', 'note' => ''], $cart);
+check($orders->updateStatus($orderId3, 'confirmed'), 'Admin xác nhận đơn trước khi hủy');
+check($orders->updateStatus($orderId3, 'cancelled'), 'Admin hủy được đơn đã xác nhận');
+check((int) $pdo->query('SELECT stock FROM products WHERE id = ' . (int) $product['id'])->fetchColumn() === $stockBeforeAdminCancel, 'Admin hủy đơn đã hoàn lại tồn kho');
+check(!$orders->updateStatus($orderId3, 'confirmed'), 'Không thể đổi trạng thái đơn đã hủy');
+
 $results = $orders->search(['q' => 'Khách kiểm thử', 'status' => '', 'sort' => ''], 10, 0);
 check(count($results) >= 2, 'Tìm đơn theo tên khách hàng');
-check($orders->countForUser((int) $customer['id']) >= 2, 'Đếm đơn phục vụ phân trang khách hàng');
+$results = $orders->search(['q' => 'DH' . str_pad((string) $orderId3, 6, '0', STR_PAD_LEFT), 'status' => '', 'sort' => ''], 10, 0);
+check(count($results) === 1 && (int) $results[0]['id'] === $orderId3, 'Tìm chính xác theo mã đơn định dạng DH000001');
+$results = $orders->search(['q' => '0911222333', 'status' => 'cancelled', 'sort' => ''], 10, 0);
+check(count($results) === 1 && (int) $results[0]['id'] === $orderId3, 'Tìm theo số điện thoại kết hợp lọc trạng thái');
+$results = $orders->search(['q' => 'DH000000', 'status' => '', 'sort' => ''], 10, 0);
+check($results === [], 'Mã đơn không hợp lệ không trả về toàn bộ danh sách');
+$oldest = $orders->search(['q' => '', 'status' => '', 'sort' => 'oldest'], 100, 0);
+$newest = $orders->search(['q' => '', 'status' => '', 'sort' => ''], 100, 0);
+check((int) $oldest[0]['id'] <= (int) $oldest[count($oldest) - 1]['id'], 'Sắp xếp đơn cũ nhất ổn định');
+check((int) $newest[0]['id'] >= (int) $newest[count($newest) - 1]['id'], 'Sắp xếp đơn mới nhất ổn định');
+$totalAsc = $orders->search(['q' => '', 'status' => '', 'sort' => 'total_asc'], 100, 0);
+$totalDesc = $orders->search(['q' => '', 'status' => '', 'sort' => 'total_desc'], 100, 0);
+check((float) $totalAsc[0]['total_amount'] <= (float) $totalAsc[count($totalAsc) - 1]['total_amount'], 'Sắp xếp tổng tiền tăng dần');
+check((float) $totalDesc[0]['total_amount'] >= (float) $totalDesc[count($totalDesc) - 1]['total_amount'], 'Sắp xếp tổng tiền giảm dần');
+check($orders->countSearch(['q' => '0911222333', 'status' => 'cancelled']) === 1, 'Đếm kết quả lọc đơn phục vụ phân trang Admin');
+check($orders->countForUser((int) $customer['id']) >= 3, 'Đếm đơn phục vụ phân trang khách hàng');
 
 $products = (new ProductModel($pdo))->searchProducts(['q' => (string) $product['name'], 'category_id' => null, 'sort' => 'price_asc', 'limit' => 12, 'offset' => 0]);
 check($products !== [], 'Tìm kiếm và sắp xếp sản phẩm');
