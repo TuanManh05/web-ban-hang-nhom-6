@@ -5,6 +5,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Cart.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $pageTitle = 'Giỏ hàng';
 
 // Đường dẫn tương đối của chính trang này, dùng để redirect sau khi xử lý form
@@ -51,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirectTo = $selfPath;
     if (
         !empty($_POST['redirect'])
-        && preg_match('#^[a-zA-Z0-9_\-\/]+\.php(?:\?[a-zA-Z0-9=&%._\-\[\]]*)?$#', (string) $_POST['redirect'])
+        && preg_match('#^/?[a-zA-Z0-9_\-]+(?:/[a-zA-Z0-9_\-]+)*\.php(?:\?[a-zA-Z0-9=&%._\-\[\]]*)?$#', (string) $_POST['redirect'])
     ) {
         $redirectTo = $_POST['redirect'];
     }
@@ -118,7 +122,7 @@ require __DIR__ . '/partials/header.php';
                                 <img
                                     src="<?= $item['image_path']
                                         ? htmlspecialchars($basePath . '/uploads/' . $item['image_path'], ENT_QUOTES, 'UTF-8')
-                                        : $basePath . '/assets/img/product-placeholder.png' ?>"
+                                        : $basePath . '/assets/img/tech-placeholder.svg' ?>"
                                     class="rounded border cart-thumb"
                                     alt="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>">
                                 <span class="fw-medium"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -171,7 +175,7 @@ require __DIR__ . '/partials/header.php';
                             <img
                                 src="<?= $item['image_path']
                                     ? htmlspecialchars($basePath . '/uploads/' . $item['image_path'], ENT_QUOTES, 'UTF-8')
-                                    : $basePath . '/assets/img/product-placeholder.png' ?>"
+                                    : $basePath . '/assets/img/tech-placeholder.svg' ?>"
                                 class="rounded border cart-thumb flex-shrink-0"
                                 alt="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>">
                             <div class="flex-grow-1">
