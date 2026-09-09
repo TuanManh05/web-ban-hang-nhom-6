@@ -40,9 +40,10 @@ if (!isset($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') 
                 <a href="index.php?action=home" class="btn btn-outline-light btn-sm" target="_blank">
                     <i class="bi bi-box-arrow-up-right me-1"></i>Xem trang chủ
                 </a>
-                <a href="index.php?action=logout" class="btn btn-outline-danger btn-sm">
-                    <i class="bi bi-box-arrow-right me-1"></i>Đăng xuất
-                </a>
+                <form method="post" action="index.php?action=logout" class="m-0">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Đăng xuất</button>
+                </form>
             </div>
         </div>
     </div>

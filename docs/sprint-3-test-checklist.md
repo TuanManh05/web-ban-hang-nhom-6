@@ -9,4 +9,4 @@
 | SHOP-34 | Kiểm tra mật khẩu hiện tại, độ dài, xác nhận và băm mật khẩu mới | Pass |
 | SHOP-35 | Chuyển trạng thái đúng chuỗi; trạng thái kết thúc không sửa được | Pass |
 
-Kiểm tra cú pháp PHP: Pass. Kiểm thử tích hợp database cần chạy lại trên máy có cấu hình MySQL hợp lệ trước khi đóng Sprint.
+Kiểm tra cú pháp PHP: Pass. Kiểm thử tích hợp trên database riêng: Pass. Smoke test HTTP trang chủ, danh sách sản phẩm, chi tiết sản phẩm, giỏ hàng và đăng nhập: Pass.

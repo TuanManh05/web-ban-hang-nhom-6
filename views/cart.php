@@ -11,6 +11,11 @@ $pageTitle = 'Giỏ hàng';
 $selfPath = 'cart.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $token = (string) ($_POST['csrf_token'] ?? '');
+    if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+        http_response_code(419);
+        exit('Phiên làm việc đã hết hạn. Vui lòng tải lại trang.');
+    }
     $action = $_POST['action'] ?? '';
     $productId = (int) ($_POST['product_id'] ?? 0);
     $result = null;
@@ -123,6 +128,7 @@ require __DIR__ . '/partials/header.php';
                         <td>
                             <div class="d-flex align-items-center justify-content-center gap-2">
                                 <form method="post" action="cart.php">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
                                     <button type="submit" name="action" value="decrease"
                                             class="btn btn-outline-secondary btn-sm qty-btn"
@@ -130,6 +136,7 @@ require __DIR__ . '/partials/header.php';
                                 </form>
                                 <span class="px-2 fw-semibold"><?= $item['quantity'] ?></span>
                                 <form method="post" action="cart.php">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
                                     <button type="submit" name="action" value="increase"
                                             class="btn btn-outline-secondary btn-sm qty-btn"
@@ -144,6 +151,7 @@ require __DIR__ . '/partials/header.php';
                         <td class="text-end fw-semibold text-danger"><?= number_format($item['subtotal'], 0, ',', '.') ?> đ</td>
                         <td class="text-end">
                             <form method="post" action="cart.php">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                                 <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
                                 <button type="submit" name="action" value="remove" class="btn btn-outline-danger btn-sm">Xoá</button>
                             </form>
@@ -173,6 +181,7 @@ require __DIR__ . '/partials/header.php';
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div class="d-flex align-items-center gap-2">
                                         <form method="post" action="cart.php">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                                             <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
                                             <button type="submit" name="action" value="decrease"
                                                     class="btn btn-outline-secondary btn-sm qty-btn"
@@ -180,6 +189,7 @@ require __DIR__ . '/partials/header.php';
                                         </form>
                                         <span class="px-2 fw-semibold"><?= $item['quantity'] ?></span>
                                         <form method="post" action="cart.php">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                                             <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
                                             <button type="submit" name="action" value="increase"
                                                     class="btn btn-outline-secondary btn-sm qty-btn"
@@ -188,6 +198,7 @@ require __DIR__ . '/partials/header.php';
                                         </form>
                                     </div>
                                     <form method="post" action="cart.php">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                                         <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
                                         <button type="submit" name="action" value="remove" class="btn btn-outline-danger btn-sm">Xoá</button>
                                     </form>
@@ -206,6 +217,7 @@ require __DIR__ . '/partials/header.php';
         <!-- Tổng kết giỏ hàng -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mt-4 gap-3 border-top pt-4">
             <form method="post" action="cart.php" onsubmit="return confirm('Xoá toàn bộ giỏ hàng?');">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                 <button type="submit" name="action" value="clear" class="btn btn-outline-secondary btn-sm">
                     Xoá toàn bộ giỏ hàng
                 </button>

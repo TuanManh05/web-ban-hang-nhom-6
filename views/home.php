@@ -35,6 +35,7 @@
                             <?php $stock = (int) ($product['stock'] ?? 0); ?>
                             <?php if ($stock > 0): ?>
                                 <form method="post" action="<?= $basePath ?>/views/cart.php">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="action" value="add">
                                     <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
                                     <input type="hidden" name="quantity" value="1">
