@@ -1,11 +1,5 @@
 <?php declare(strict_types=1);
 
-/**
- * Tự tính đường dẫn gốc của dự án (base path), để CSS/JS/link menu
- * luôn đúng dù trang đang mở nằm ở gốc (index.php) hay trong views/.
- * Ví dụ: nếu dự án chạy tại http://localhost/web-ban-hang-nhom-6/,
- * $basePath sẽ tự động là "/web-ban-hang-nhom-6".
- */
 $documentRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
 $projectRoot = realpath(__DIR__ . '/../..');
 $basePath = '';
@@ -19,74 +13,91 @@ $cartCount = Cart::getTotalQuantity();
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
+
+$currentPath = str_replace('\\', '/', $_SERVER['PHP_SELF'] ?? '');
+$isHome = str_ends_with($currentPath, '/index.php') && (($_GET['action'] ?? 'home') === 'home');
+$isProducts = str_ends_with($currentPath, '/products.php');
 ?>
 <!doctype html>
 <html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#e11d2e">
     <title><?= htmlspecialchars($pageTitle ?? 'Nhóm 6', ENT_QUOTES, 'UTF-8') ?> | Nhóm 6 Shop</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?= $basePath ?>/assets/css/app.css" rel="stylesheet">
 </head>
 <body>
-<nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="<?= $basePath ?>/index.php">Nhóm 6 Shop</a>
-
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                data-bs-target="#mainNavbar" aria-controls="mainNavbar"
-                aria-expanded="false" aria-label="Mở menu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse" id="mainNavbar">
-            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= $basePath ?>/index.php">Trang chủ</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= $basePath ?>/views/products.php">Sản phẩm</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center gap-1" href="<?= $basePath ?>/views/cart.php">
-                        Giỏ hàng
-                        <?php if ($cartCount > 0): ?>
-                            <span class="badge rounded-pill bg-danger"><?= $cartCount ?></span>
-                        <?php endif; ?>
-                    </a>
-                </li>
-                <?php if (isset($_SESSION['user'])): ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= $basePath ?>/index.php?action=orders">Đơn hàng của tôi</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= $basePath ?>/index.php?action=profile">Tài khoản</a>
-                    </li>
-                    <?php if (($_SESSION['user']['role'] ?? '') === 'admin'): ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="<?= $basePath ?>/index.php?action=admin">Quản trị</a>
-                        </li>
-                    <?php endif; ?>
-                    <li class="nav-item d-flex align-items-center ms-lg-2">
-                        <span class="navbar-text me-2">
-                            <?= htmlspecialchars((string) ($_SESSION['user']['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
-                        </span>
-                        <form method="post" action="<?= $basePath ?>/index.php?action=logout" class="m-0">
-                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
-                            <button type="submit" class="btn btn-outline-light btn-sm">Đăng xuất</button>
-                        </form>
-                    </li>
-                <?php else: ?>
-                    <li class="nav-item ms-lg-2">
-                        <a class="nav-link" href="<?= $basePath ?>/index.php?action=login">Đăng nhập</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= $basePath ?>/index.php?action=register">Đăng ký</a>
-                    </li>
-                <?php endif; ?>
-            </ul>
+<header class="store-header">
+    <div class="utility-bar">
+        <div class="container d-flex justify-content-between align-items-center gap-3">
+            <p class="mb-0 d-none d-md-block">Công nghệ chính hãng · Giá tốt mỗi ngày</p>
+            <div class="utility-links ms-auto">
+                <a href="#store-services">Khuyến mãi</a>
+                <a href="#store-services">Chính sách</a>
+                <span>Hotline: <strong>1900 6868</strong></span>
+            </div>
         </div>
     </div>
-</nav>
+
+    <div class="main-header">
+        <div class="container header-grid">
+            <a class="store-logo" href="<?= $basePath ?>/index.php" aria-label="Nhóm 6 Shop - Trang chủ">
+                <span class="logo-mark">N6</span>
+                <span><strong>NHÓM 6</strong><small>TECH STORE</small></span>
+            </a>
+
+            <form class="header-search" method="get" action="<?= $basePath ?>/views/products.php" role="search">
+                <input type="search" name="q" placeholder="Bạn cần tìm sản phẩm gì?" aria-label="Tìm kiếm sản phẩm"
+                       value="<?= htmlspecialchars((string) ($_GET['q'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                <button type="submit" aria-label="Tìm kiếm"><span aria-hidden="true">⌕</span><span class="d-none d-sm-inline">Tìm kiếm</span></button>
+            </form>
+
+            <div class="header-actions">
+                <?php if (isset($_SESSION['user'])): ?>
+                    <div class="account-menu" tabindex="0">
+                        <span class="action-icon" aria-hidden="true">♙</span>
+                        <span class="action-copy"><small>Xin chào</small><strong><?= htmlspecialchars((string) ($_SESSION['user']['name'] ?? 'Tài khoản'), ENT_QUOTES, 'UTF-8') ?></strong></span>
+                        <div class="account-dropdown">
+                            <a href="<?= $basePath ?>/index.php?action=profile">Tài khoản</a>
+                            <a href="<?= $basePath ?>/index.php?action=orders">Đơn hàng của tôi</a>
+                            <?php if (($_SESSION['user']['role'] ?? '') === 'admin'): ?>
+                                <a href="<?= $basePath ?>/index.php?action=admin">Trang quản trị</a>
+                            <?php endif; ?>
+                            <form method="post" action="<?= $basePath ?>/index.php?action=logout">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
+                                <button type="submit">Đăng xuất</button>
+                            </form>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <a class="header-action" href="<?= $basePath ?>/index.php?action=login">
+                        <span class="action-icon" aria-hidden="true">♙</span>
+                        <span class="action-copy"><small>Đăng nhập</small><strong>Tài khoản</strong></span>
+                    </a>
+                <?php endif; ?>
+                <a class="header-action cart-action" href="<?= $basePath ?>/views/cart.php">
+                    <span class="action-icon" aria-hidden="true">🛒</span>
+                    <span class="action-copy"><small>Giỏ hàng</small><strong><?= $cartCount ?> sản phẩm</strong></span>
+                    <span class="cart-count"><?= $cartCount ?></span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <nav class="category-nav" aria-label="Điều hướng chính">
+        <div class="container category-nav-inner">
+            <a class="category-trigger" href="<?= $basePath ?>/views/products.php"><span>☰</span> DANH MỤC SẢN PHẨM</a>
+            <div class="quick-links">
+                <a class="<?= $isHome ? 'active' : '' ?>" href="<?= $basePath ?>/index.php">Trang chủ</a>
+                <a class="<?= $isProducts ? 'active' : '' ?>" href="<?= $basePath ?>/views/products.php">Sản phẩm</a>
+                <a href="<?= $basePath ?>/views/products.php?q=Laptop">Laptop</a>
+                <a href="<?= $basePath ?>/views/products.php?q=Gaming">PC Gaming</a>
+                <a href="<?= $basePath ?>/views/products.php?q=Phụ kiện">Phụ kiện</a>
+                <a href="<?= $basePath ?>/views/products.php?sort=price_asc">Giá tốt</a>
+            </div>
+        </div>
+    </nav>
+</header>
 <main>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="540" viewBox="0 0 720 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#e2e8f0"/></linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101827"/><stop offset=".55" stop-color="#243b73"/><stop offset="1" stop-color="#e11d2e"/></linearGradient>
+  </defs>
+  <rect width="720" height="540" rx="28" fill="url(#bg)"/>
+  <ellipse cx="360" cy="454" rx="235" ry="24" fill="#cbd5e1" opacity=".7"/>
+  <rect x="148" y="105" width="424" height="286" rx="18" fill="#111827"/>
+  <rect x="164" y="121" width="392" height="238" rx="8" fill="url(#screen)"/>
+  <circle cx="360" cy="376" r="6" fill="#e11d2e"/>
+  <path d="M314 391h92l12 40h-116z" fill="#475569"/>
+  <rect x="260" y="426" width="200" height="14" rx="7" fill="#64748b"/>
+  <path d="M225 302l86-88 54 54 48-49 85 83z" fill="#fff" opacity=".15"/>
+  <circle cx="448" cy="188" r="34" fill="#fff" opacity=".18"/>
+  <text x="360" y="495" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" font-weight="700" fill="#334155">NHÓM 6 TECH</text>
+</svg>
