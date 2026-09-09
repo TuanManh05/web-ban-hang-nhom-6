@@ -15,6 +15,7 @@ require_once __DIR__ . '/controllers/ProductController.php';
 require_once __DIR__ . '/controllers/CategoryController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/OrderController.php';
+require_once __DIR__ . '/controllers/AccountController.php';
 require_once __DIR__ . '/middleware/AuthMiddleware.php';
 
 // Lấy kết nối PDO từ hàm database()
@@ -58,6 +59,9 @@ switch ($action) {
     case 'order-detail':
         (new OrderController($pdo))->detail();
         break;
+    case 'order-cancel':
+        (new OrderController($pdo))->cancel();
+        break;
     case 'admin-orders':
         (new OrderController($pdo))->adminIndex();
         break;
@@ -66,6 +70,16 @@ switch ($action) {
         break;
     case 'admin-order-status':
         (new OrderController($pdo))->updateStatus();
+        break;
+
+    case 'profile':
+        (new AccountController($pdo))->profile();
+        break;
+    case 'profile-update':
+        (new AccountController($pdo))->updateProfile();
+        break;
+    case 'password-update':
+        (new AccountController($pdo))->changePassword();
         break;
 
     case 'checkout':

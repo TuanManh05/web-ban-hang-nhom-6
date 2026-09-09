@@ -67,7 +67,11 @@ final class OrderController
     public function history(): void
     {
         AuthMiddleware::requireLogin();
-        $orders = $this->orders->getForUser((int) $_SESSION['user']['id']);
+        $perPage = 10;
+        $totalOrders = $this->orders->countForUser((int) $_SESSION['user']['id']);
+        $totalPages = max(1, (int) ceil($totalOrders / $perPage));
+        $page = min($totalPages, max(1, (int) ($_GET['page'] ?? 1)));
+        $orders = $this->orders->getForUser((int) $_SESSION['user']['id'], $perPage, ($page - 1) * $perPage);
         $pageTitle = 'Lịch sử đơn hàng';
         require __DIR__ . '/../views/orders/history.php';
     }
@@ -84,7 +88,12 @@ final class OrderController
     public function adminIndex(): void
     {
         AuthMiddleware::requireAdmin();
-        $orders = $this->orders->getAll();
+        $filters = ['q' => trim((string) ($_GET['q'] ?? '')), 'status' => (string) ($_GET['status'] ?? ''), 'sort' => (string) ($_GET['sort'] ?? '')];
+        $perPage = 10;
+        $totalOrders = $this->orders->countSearch($filters);
+        $totalPages = max(1, (int) ceil($totalOrders / $perPage));
+        $page = min($totalPages, max(1, (int) ($_GET['page'] ?? 1)));
+        $orders = $this->orders->search($filters, $perPage, ($page - 1) * $perPage);
         $pageTitle = 'Quản lý đơn hàng';
         require __DIR__ . '/../views/admin/orders/index.php';
     }
@@ -107,6 +116,23 @@ final class OrderController
         $updated = $this->orders->updateStatus($orderId, (string) ($_POST['status'] ?? ''));
         $message = $updated ? 'Đã cập nhật trạng thái đơn hàng.' : 'Không thể cập nhật trạng thái đơn hàng.';
         header('Location: index.php?action=admin-order-detail&id=' . $orderId . '&' . ($updated ? 'msg=' : 'error=') . urlencode($message));
+        exit;
+    }
+
+    public function cancel(): void
+    {
+        AuthMiddleware::requireLogin();
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') { http_response_code(405); exit('Phương thức không được hỗ trợ.'); }
+        $this->verifyCsrf();
+        $orderId = max(0, (int) ($_POST['order_id'] ?? 0));
+        try {
+            $cancelled = $this->orders->cancelForUser($orderId, (int) $_SESSION['user']['id']);
+            $message = $cancelled ? 'Đã hủy đơn hàng và hoàn lại tồn kho.' : 'Chỉ có thể hủy đơn đang chờ xác nhận của bạn.';
+            header('Location: index.php?action=order-detail&id=' . $orderId . '&' . ($cancelled ? 'msg=' : 'error=') . urlencode($message));
+        } catch (Throwable $exception) {
+            error_log($exception->__toString());
+            header('Location: index.php?action=order-detail&id=' . $orderId . '&error=' . urlencode('Không thể hủy đơn lúc này.'));
+        }
         exit;
     }
 

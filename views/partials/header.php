@@ -60,6 +60,9 @@ if (!isset($_SESSION['csrf_token'])) {
                     <li class="nav-item">
                         <a class="nav-link" href="<?= $basePath ?>/index.php?action=orders">Đơn hàng của tôi</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= $basePath ?>/index.php?action=profile">Tài khoản</a>
+                    </li>
                     <?php if (($_SESSION['user']['role'] ?? '') === 'admin'): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="<?= $basePath ?>/index.php?action=admin">Quản trị</a>
