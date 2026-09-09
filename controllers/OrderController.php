@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../models/Cart.php';
 require_once __DIR__ . '/../models/Order.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
 final class OrderController
 {
@@ -61,6 +62,52 @@ final class OrderController
             error_log($exception->__toString());
             $this->redirectBack('Không thể tạo đơn hàng lúc này. Vui lòng thử lại.');
         }
+    }
+
+    public function history(): void
+    {
+        AuthMiddleware::requireLogin();
+        $orders = $this->orders->getForUser((int) $_SESSION['user']['id']);
+        $pageTitle = 'Lịch sử đơn hàng';
+        require __DIR__ . '/../views/orders/history.php';
+    }
+
+    public function detail(): void
+    {
+        AuthMiddleware::requireLogin();
+        $order = $this->orders->findForUser(max(0, (int) ($_GET['id'] ?? 0)), (int) $_SESSION['user']['id']);
+        if (!$order) { http_response_code(404); }
+        $pageTitle = $order ? 'Chi tiết đơn hàng' : 'Không tìm thấy đơn hàng';
+        require __DIR__ . '/../views/orders/detail.php';
+    }
+
+    public function adminIndex(): void
+    {
+        AuthMiddleware::requireAdmin();
+        $orders = $this->orders->getAll();
+        $pageTitle = 'Quản lý đơn hàng';
+        require __DIR__ . '/../views/admin/orders/index.php';
+    }
+
+    public function adminDetail(): void
+    {
+        AuthMiddleware::requireAdmin();
+        $order = $this->orders->find(max(0, (int) ($_GET['id'] ?? 0)));
+        if (!$order) { http_response_code(404); }
+        $pageTitle = $order ? 'Chi tiết đơn hàng' : 'Không tìm thấy đơn hàng';
+        require __DIR__ . '/../views/admin/orders/detail.php';
+    }
+
+    public function updateStatus(): void
+    {
+        AuthMiddleware::requireAdmin();
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') { http_response_code(405); exit('Phương thức không được hỗ trợ.'); }
+        $this->verifyCsrf();
+        $orderId = max(0, (int) ($_POST['order_id'] ?? 0));
+        $updated = $this->orders->updateStatus($orderId, (string) ($_POST['status'] ?? ''));
+        $message = $updated ? 'Đã cập nhật trạng thái đơn hàng.' : 'Không thể cập nhật trạng thái đơn hàng.';
+        header('Location: index.php?action=admin-order-detail&id=' . $orderId . '&' . ($updated ? 'msg=' : 'error=') . urlencode($message));
+        exit;
     }
 
     private function validate(array $customer): array

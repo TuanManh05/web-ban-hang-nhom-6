@@ -52,6 +52,22 @@ switch ($action) {
         (new OrderController($pdo))->store();
         break;
 
+    case 'orders':
+        (new OrderController($pdo))->history();
+        break;
+    case 'order-detail':
+        (new OrderController($pdo))->detail();
+        break;
+    case 'admin-orders':
+        (new OrderController($pdo))->adminIndex();
+        break;
+    case 'admin-order-detail':
+        (new OrderController($pdo))->adminDetail();
+        break;
+    case 'admin-order-status':
+        (new OrderController($pdo))->updateStatus();
+        break;
+
     case 'checkout':
         require_once __DIR__ . '/views/checkout.php';
         break;
