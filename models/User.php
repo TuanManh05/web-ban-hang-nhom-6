@@ -44,4 +44,24 @@ final class User
 
         return (int) $this->pdo->lastInsertId();
     }
+
+    public function findById(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT id, name, email, password, role, status FROM users WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $user ?: null;
+    }
+
+    public function updateName(int $id, string $name): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE users SET name = :name WHERE id = :id');
+        return $stmt->execute(['name' => trim($name), 'id' => $id]);
+    }
+
+    public function updatePassword(int $id, string $password): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE users SET password = :password WHERE id = :id');
+        return $stmt->execute(['password' => password_hash($password, PASSWORD_DEFAULT), 'id' => $id]);
+    }
 }

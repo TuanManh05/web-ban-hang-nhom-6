@@ -126,16 +126,43 @@ final class Order
         return $order ? $this->withItems($order) : null;
     }
 
-    public function getForUser(int $userId): array
+    public function getForUser(int $userId, int $limit = 10, int $offset = 0): array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM orders WHERE user_id = :user_id ORDER BY created_at DESC, id DESC');
-        $stmt->execute(['user_id' => $userId]);
+        $stmt = $this->pdo->prepare('SELECT * FROM orders WHERE user_id = :user_id ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset');
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getAll(): array
+    public function countForUser(int $userId): int
     {
-        return $this->pdo->query('SELECT o.*, u.email AS user_email FROM orders o LEFT JOIN users u ON u.id = o.user_id ORDER BY o.created_at DESC, o.id DESC')->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM orders WHERE user_id = :user_id');
+        $stmt->execute(['user_id' => $userId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function search(array $filters, int $limit = 10, int $offset = 0): array
+    {
+        [$where, $params] = $this->buildSearchWhere($filters);
+        $sortMap = ['oldest' => 'o.created_at ASC', 'total_asc' => 'o.total_amount ASC', 'total_desc' => 'o.total_amount DESC'];
+        $orderBy = $sortMap[$filters['sort'] ?? ''] ?? 'o.created_at DESC';
+        $sql = 'SELECT o.*, u.email AS user_email FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE ' . implode(' AND ', $where) . " ORDER BY $orderBy, o.id DESC LIMIT :limit OFFSET :offset";
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $key => $value) { $stmt->bindValue($key, $value); }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function countSearch(array $filters): int
+    {
+        [$where, $params] = $this->buildSearchWhere($filters);
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM orders o WHERE ' . implode(' AND ', $where));
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn();
     }
 
     public function find(int $orderId): ?array
@@ -148,12 +175,19 @@ final class Order
 
     public function updateStatus(int $orderId, string $status): bool
     {
-        if (!in_array($status, ['pending', 'confirmed', 'shipping', 'completed', 'cancelled'], true)) {
-            return false;
-        }
-        $stmt = $this->pdo->prepare('UPDATE orders SET status = :status WHERE id = :id');
-        $stmt->execute(['status' => $status, 'id' => $orderId]);
-        return $stmt->rowCount() === 1;
+        $allowedTransitions = [
+            'pending' => ['confirmed', 'cancelled'],
+            'confirmed' => ['shipping', 'cancelled'],
+            'shipping' => ['completed'],
+            'completed' => [],
+            'cancelled' => [],
+        ];
+        return $this->transitionStatus($orderId, $status, null, $allowedTransitions);
+    }
+
+    public function cancelForUser(int $orderId, int $userId): bool
+    {
+        return $this->transitionStatus($orderId, 'cancelled', $userId, ['pending' => ['cancelled']]);
     }
 
     private function withItems(array $order): array
@@ -162,5 +196,57 @@ final class Order
         $stmt->execute(['order_id' => (int) $order['id']]);
         $order['items'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $order;
+    }
+
+    private function transitionStatus(int $orderId, string $newStatus, ?int $userId, array $allowedTransitions): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $sql = 'SELECT id, status FROM orders WHERE id = :id' . ($userId === null ? '' : ' AND user_id = :user_id') . ' FOR UPDATE';
+            $stmt = $this->pdo->prepare($sql);
+            $params = ['id' => $orderId];
+            if ($userId !== null) { $params['user_id'] = $userId; }
+            $stmt->execute($params);
+            $order = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$order || !in_array($newStatus, $allowedTransitions[$order['status']] ?? [], true)) {
+                $this->pdo->rollBack();
+                return false;
+            }
+            if ($newStatus === 'cancelled') {
+                $items = $this->pdo->prepare('SELECT product_id, quantity FROM order_items WHERE order_id = :order_id');
+                $items->execute(['order_id' => $orderId]);
+                $restore = $this->pdo->prepare('UPDATE products SET stock = stock + :quantity WHERE id = :id');
+                foreach ($items->fetchAll(PDO::FETCH_ASSOC) as $item) {
+                    if ($item['product_id'] !== null) { $restore->execute(['quantity' => (int) $item['quantity'], 'id' => (int) $item['product_id']]); }
+                }
+            }
+            $update = $this->pdo->prepare('UPDATE orders SET status = :status WHERE id = :id');
+            $update->execute(['status' => $newStatus, 'id' => $orderId]);
+            $this->pdo->commit();
+            return true;
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) { $this->pdo->rollBack(); }
+            throw $exception;
+        }
+    }
+
+    private function buildSearchWhere(array $filters): array
+    {
+        $where = ['1 = 1'];
+        $params = [];
+        $keyword = trim((string) ($filters['q'] ?? ''));
+        if ($keyword !== '') {
+            $value = '%' . preg_replace('/^DH0*/i', '', $keyword) . '%';
+            $where[] = "(CAST(o.id AS CHAR) LIKE :keyword_id OR o.customer_name LIKE :keyword_name OR o.phone LIKE :keyword_phone)";
+            $params[':keyword_id'] = $value;
+            $params[':keyword_name'] = $value;
+            $params[':keyword_phone'] = $value;
+        }
+        $status = (string) ($filters['status'] ?? '');
+        if (in_array($status, ['pending', 'confirmed', 'shipping', 'completed', 'cancelled'], true)) {
+            $where[] = 'o.status = :status';
+            $params[':status'] = $status;
+        }
+        return [$where, $params];
     }
 }
