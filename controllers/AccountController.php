@@ -51,6 +51,7 @@ final class AccountController
         if (isset($error)) { header('Location: index.php?action=profile&error=' . urlencode($error)); exit; }
         $this->users->updatePassword((int) $user['id'], $password);
         session_regenerate_id(true);
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         header('Location: index.php?action=profile&msg=' . urlencode('Đổi mật khẩu thành công.'));
         exit;
     }

@@ -146,9 +146,13 @@ final class Order
     public function search(array $filters, int $limit = 10, int $offset = 0): array
     {
         [$where, $params] = $this->buildSearchWhere($filters);
-        $sortMap = ['oldest' => 'o.created_at ASC', 'total_asc' => 'o.total_amount ASC', 'total_desc' => 'o.total_amount DESC'];
-        $orderBy = $sortMap[$filters['sort'] ?? ''] ?? 'o.created_at DESC';
-        $sql = 'SELECT o.*, u.email AS user_email FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE ' . implode(' AND ', $where) . " ORDER BY $orderBy, o.id DESC LIMIT :limit OFFSET :offset";
+        $sortMap = [
+            'oldest' => 'o.created_at ASC, o.id ASC',
+            'total_asc' => 'o.total_amount ASC, o.id DESC',
+            'total_desc' => 'o.total_amount DESC, o.id DESC',
+        ];
+        $orderBy = $sortMap[$filters['sort'] ?? ''] ?? 'o.created_at DESC, o.id DESC';
+        $sql = 'SELECT o.*, u.email AS user_email FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE ' . implode(' AND ', $where) . " ORDER BY $orderBy LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $key => $value) { $stmt->bindValue($key, $value); }
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
@@ -217,11 +221,19 @@ final class Order
                 $items->execute(['order_id' => $orderId]);
                 $restore = $this->pdo->prepare('UPDATE products SET stock = stock + :quantity WHERE id = :id');
                 foreach ($items->fetchAll(PDO::FETCH_ASSOC) as $item) {
-                    if ($item['product_id'] !== null) { $restore->execute(['quantity' => (int) $item['quantity'], 'id' => (int) $item['product_id']]); }
+                    if ($item['product_id'] !== null) {
+                        $restore->execute(['quantity' => (int) $item['quantity'], 'id' => (int) $item['product_id']]);
+                        if ($restore->rowCount() !== 1) {
+                            throw new RuntimeException('Không thể hoàn lại tồn kho cho đơn hàng.');
+                        }
+                    }
                 }
             }
-            $update = $this->pdo->prepare('UPDATE orders SET status = :status WHERE id = :id');
-            $update->execute(['status' => $newStatus, 'id' => $orderId]);
+            $update = $this->pdo->prepare('UPDATE orders SET status = :status WHERE id = :id AND status = :current_status');
+            $update->execute(['status' => $newStatus, 'id' => $orderId, 'current_status' => $order['status']]);
+            if ($update->rowCount() !== 1) {
+                throw new RuntimeException('Trạng thái đơn hàng vừa thay đổi, vui lòng thử lại.');
+            }
             $this->pdo->commit();
             return true;
         } catch (Throwable $exception) {
@@ -236,11 +248,16 @@ final class Order
         $params = [];
         $keyword = trim((string) ($filters['q'] ?? ''));
         if ($keyword !== '') {
-            $value = '%' . preg_replace('/^DH0*/i', '', $keyword) . '%';
-            $where[] = "(CAST(o.id AS CHAR) LIKE :keyword_id OR o.customer_name LIKE :keyword_name OR o.phone LIKE :keyword_phone)";
-            $params[':keyword_id'] = $value;
-            $params[':keyword_name'] = $value;
-            $params[':keyword_phone'] = $value;
+            if (preg_match('/^DH(\d+)$/i', $keyword, $matches) === 1) {
+                $where[] = 'o.id = :order_id';
+                $params[':order_id'] = (int) $matches[1];
+            } else {
+                $value = '%' . $keyword . '%';
+                $where[] = '(CAST(o.id AS CHAR) LIKE :keyword_id OR o.customer_name LIKE :keyword_name OR o.phone LIKE :keyword_phone)';
+                $params[':keyword_id'] = $value;
+                $params[':keyword_name'] = $value;
+                $params[':keyword_phone'] = $value;
+            }
         }
         $status = (string) ($filters['status'] ?? '');
         if (in_array($status, ['pending', 'confirmed', 'shipping', 'completed', 'cancelled'], true)) {
