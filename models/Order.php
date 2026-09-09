@@ -117,4 +117,50 @@ final class Order
             throw $exception;
         }
     }
+
+    public function findForUser(int $orderId, int $userId): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM orders WHERE id = :id AND user_id = :user_id');
+        $stmt->execute(['id' => $orderId, 'user_id' => $userId]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $order ? $this->withItems($order) : null;
+    }
+
+    public function getForUser(int $userId): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM orders WHERE user_id = :user_id ORDER BY created_at DESC, id DESC');
+        $stmt->execute(['user_id' => $userId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getAll(): array
+    {
+        return $this->pdo->query('SELECT o.*, u.email AS user_email FROM orders o LEFT JOIN users u ON u.id = o.user_id ORDER BY o.created_at DESC, o.id DESC')->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function find(int $orderId): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT o.*, u.email AS user_email FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = :id');
+        $stmt->execute(['id' => $orderId]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $order ? $this->withItems($order) : null;
+    }
+
+    public function updateStatus(int $orderId, string $status): bool
+    {
+        if (!in_array($status, ['pending', 'confirmed', 'shipping', 'completed', 'cancelled'], true)) {
+            return false;
+        }
+        $stmt = $this->pdo->prepare('UPDATE orders SET status = :status WHERE id = :id');
+        $stmt->execute(['status' => $status, 'id' => $orderId]);
+        return $stmt->rowCount() === 1;
+    }
+
+    private function withItems(array $order): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM order_items WHERE order_id = :order_id ORDER BY id ASC');
+        $stmt->execute(['order_id' => (int) $order['id']]);
+        $order['items'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $order;
+    }
 }

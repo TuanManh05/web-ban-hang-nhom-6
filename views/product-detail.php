@@ -24,10 +24,24 @@ require __DIR__ . '/partials/header.php';
             </div>
             <div class="col-md-7">
                 <h1 class="h3 fw-bold"><?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?></h1>
+                <p class="text-secondary"><?= htmlspecialchars((string) ($product['category_name'] ?? 'Chưa phân loại'), ENT_QUOTES, 'UTF-8') ?></p>
                 <p class="fs-4 fw-bold text-danger">
                     <?= number_format((float) $product['price'], 0, ',', '.') ?> đ
                 </p>
-                <a href="<?= $basePath ?>/index.php" class="btn btn-outline-secondary">&laquo; Quay lại trang chủ</a>
+                <p><?= nl2br(htmlspecialchars((string) ($product['description'] ?? 'Chưa có mô tả.'), ENT_QUOTES, 'UTF-8')) ?></p>
+                <p class="fw-semibold">Tồn kho: <?= (int) $product['stock'] ?></p>
+                <?php if ((int) $product['status'] === 1 && (int) $product['stock'] > 0): ?>
+                    <form method="post" action="<?= $basePath ?>/views/cart.php" class="d-flex gap-2 mb-3">
+                        <input type="hidden" name="action" value="add">
+                        <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
+                        <input type="hidden" name="redirect" value="product-detail.php?id=<?= (int) $product['id'] ?>">
+                        <input class="form-control" style="max-width:100px" type="number" name="quantity" value="1" min="1" max="<?= (int) $product['stock'] ?>" aria-label="Số lượng">
+                        <button class="btn btn-primary" type="submit">Thêm vào giỏ</button>
+                    </form>
+                <?php else: ?>
+                    <p class="text-danger fw-semibold">Sản phẩm hiện đã hết hàng.</p>
+                <?php endif; ?>
+                <a href="<?= $basePath ?>/views/products.php" class="btn btn-outline-secondary">&laquo; Quay lại danh sách</a>
             </div>
         </div>
     <?php else: ?>

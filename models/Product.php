@@ -31,11 +31,12 @@ final class Product
         $pdo = database();
 
         $stmt = $pdo->prepare(
-            'SELECT p.*, pi.image_path
+            'SELECT p.*, c.name AS category_name, pi.image_path
              FROM products p
+             LEFT JOIN categories c ON c.id = p.category_id
              LEFT JOIN product_images pi
                  ON pi.product_id = p.id AND pi.is_primary = 1
-             WHERE p.id = :id'
+             WHERE p.id = :id AND p.status = 1'
         );
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();

@@ -70,7 +70,7 @@ if (!isset($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') 
 
     <!-- các thẻ điều hướng chính -->
     <div class="row g-4 mb-4">
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card h-100 shadow-sm border-0">
                 <div class="card-body p-4 text-center">
                     <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
@@ -85,7 +85,7 @@ if (!isset($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') 
             </div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card h-100 shadow-sm border-0">
                 <div class="card-body p-4 text-center">
                     <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
@@ -96,6 +96,19 @@ if (!isset($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') 
                     <a href="index.php?action=category-index" class="btn btn-success w-100 mt-2">
                         <i class="bi bi-arrow-right-circle me-1"></i>Truy cập Danh mục
                     </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body p-4 text-center">
+                    <div class="bg-warning text-dark rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:60px;height:60px">
+                        <i class="bi bi-receipt fs-3"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Quản lý Đơn hàng</h5>
+                    <p class="card-text text-muted small">Xem chi tiết và cập nhật trạng thái đơn hàng.</p>
+                    <a href="index.php?action=admin-orders" class="btn btn-warning w-100 mt-2">Truy cập Đơn hàng</a>
                 </div>
             </div>
         </div>
