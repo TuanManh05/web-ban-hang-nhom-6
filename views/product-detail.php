@@ -32,6 +32,7 @@ require __DIR__ . '/partials/header.php';
                 <p class="fw-semibold">Tồn kho: <?= (int) $product['stock'] ?></p>
                 <?php if ((int) $product['status'] === 1 && (int) $product['stock'] > 0): ?>
                     <form method="post" action="<?= $basePath ?>/views/cart.php" class="d-flex gap-2 mb-3">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="action" value="add">
                         <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
                         <input type="hidden" name="redirect" value="product-detail.php?id=<?= (int) $product['id'] ?>">
