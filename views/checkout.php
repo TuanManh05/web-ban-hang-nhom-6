@@ -25,7 +25,11 @@ $items = Cart::getItems();
 
 // Không cho thanh toán khi giỏ hàng trống
 if (empty($items)) {
-    header('Location: ' . $basePath . '/views/cart.php?error=' . urlencode('Giỏ hàng đang trống, không thể thanh toán.'));
+    $_SESSION['flash'] = [
+        'type' => 'danger',
+        'text' => 'Giỏ hàng đang trống, không thể thanh toán.',
+    ];
+    header('Location: ' . $basePath . '/views/cart.php');
     exit;
 }
 

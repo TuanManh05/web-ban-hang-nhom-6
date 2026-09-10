@@ -53,6 +53,9 @@ final class OrderController
             Cart::clear();
             unset($_SESSION['checkout_errors'], $_SESSION['checkout_old']);
 
+            // Đọc lại đơn hàng từ database (không dùng lại dữ liệu tạm trong request)
+            // để đảm bảo hoá đơn hiển thị luôn khớp với dữ liệu đã lưu.
+            $order = $this->orders->find($orderId);
             $orderCode = 'DH' . str_pad((string) $orderId, 6, '0', STR_PAD_LEFT);
             $pageTitle = 'Đặt hàng thành công';
             require __DIR__ . '/../views/order-success.php';
@@ -105,6 +108,35 @@ final class OrderController
         if (!$order) { http_response_code(404); }
         $pageTitle = $order ? 'Chi tiết đơn hàng' : 'Không tìm thấy đơn hàng';
         require __DIR__ . '/../views/admin/orders/detail.php';
+    }
+
+    /**
+     * Hoá đơn cho khách hàng - chỉ xem được đơn hàng của chính mình
+     * (findForUser() đã lọc theo user_id, giống cơ chế của detail()).
+     */
+    public function invoice(): void
+    {
+        AuthMiddleware::requireLogin();
+        $order = $this->orders->findForUser(max(0, (int) ($_GET['id'] ?? 0)), (int) $_SESSION['user']['id']);
+        if (!$order) { http_response_code(404); }
+        $orderCode = $order ? 'DH' . str_pad((string) $order['id'], 6, '0', STR_PAD_LEFT) : '';
+        $backUrl = $order ? ('index.php?action=order-detail&id=' . $order['id']) : 'index.php?action=orders';
+        $pageTitle = 'Hóa đơn ' . $orderCode;
+        require __DIR__ . '/../views/orders/invoice.php';
+    }
+
+    /**
+     * Hoá đơn cho Admin - xem được mọi đơn hàng (find() không lọc theo user_id).
+     */
+    public function adminInvoice(): void
+    {
+        AuthMiddleware::requireAdmin();
+        $order = $this->orders->find(max(0, (int) ($_GET['id'] ?? 0)));
+        if (!$order) { http_response_code(404); }
+        $orderCode = $order ? 'DH' . str_pad((string) $order['id'], 6, '0', STR_PAD_LEFT) : '';
+        $backUrl = $order ? ('index.php?action=admin-order-detail&id=' . $order['id']) : 'index.php?action=admin-orders';
+        $pageTitle = 'Hóa đơn ' . $orderCode;
+        require __DIR__ . '/../views/orders/invoice.php';
     }
 
     public function updateStatus(): void
