@@ -4,8 +4,6 @@
 <?php else: ?>
     <h1 class="h3 fw-bold">Đơn hàng DH<?= str_pad((string) $order['id'], 6, '0', STR_PAD_LEFT) ?></h1>
     <?php $labels = ['pending'=>'Chờ xác nhận','confirmed'=>'Đã xác nhận','shipping'=>'Đang giao','completed'=>'Hoàn thành','cancelled'=>'Đã hủy']; ?>
-    <?php if (!empty($_GET['msg'])): ?><div class="alert alert-success"><?= htmlspecialchars((string) $_GET['msg'], ENT_QUOTES, 'UTF-8') ?></div><?php endif; ?>
-    <?php if (!empty($_GET['error'])): ?><div class="alert alert-danger"><?= htmlspecialchars((string) $_GET['error'], ENT_QUOTES, 'UTF-8') ?></div><?php endif; ?>
     <p>Trạng thái: <strong><?= htmlspecialchars($labels[$order['status']] ?? (string) $order['status'], ENT_QUOTES, 'UTF-8') ?></strong></p>
     <p>Người nhận: <?= htmlspecialchars((string) $order['customer_name'], ENT_QUOTES, 'UTF-8') ?> — <?= htmlspecialchars((string) $order['phone'], ENT_QUOTES, 'UTF-8') ?></p>
     <p>Địa chỉ: <?= htmlspecialchars((string) $order['address'], ENT_QUOTES, 'UTF-8') ?></p>

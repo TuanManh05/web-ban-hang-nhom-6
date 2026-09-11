@@ -146,8 +146,11 @@ final class OrderController
         $this->verifyCsrf();
         $orderId = max(0, (int) ($_POST['order_id'] ?? 0));
         $updated = $this->orders->updateStatus($orderId, (string) ($_POST['status'] ?? ''));
-        $message = $updated ? 'Đã cập nhật trạng thái đơn hàng.' : 'Không thể cập nhật trạng thái đơn hàng.';
-        header('Location: index.php?action=admin-order-detail&id=' . $orderId . '&' . ($updated ? 'msg=' : 'error=') . urlencode($message));
+        $_SESSION['flash'] = [
+            'type' => $updated ? 'success' : 'danger',
+            'text' => $updated ? 'Đã cập nhật trạng thái đơn hàng.' : 'Không thể cập nhật trạng thái đơn hàng.',
+        ];
+        header('Location: index.php?action=admin-order-detail&id=' . $orderId);
         exit;
     }
 
@@ -159,11 +162,20 @@ final class OrderController
         $orderId = max(0, (int) ($_POST['order_id'] ?? 0));
         try {
             $cancelled = $this->orders->cancelForUser($orderId, (int) $_SESSION['user']['id']);
-            $message = $cancelled ? 'Đã hủy đơn hàng và hoàn lại tồn kho.' : 'Chỉ có thể hủy đơn đang chờ xác nhận của bạn.';
-            header('Location: index.php?action=order-detail&id=' . $orderId . '&' . ($cancelled ? 'msg=' : 'error=') . urlencode($message));
+            $_SESSION['flash'] = [
+                'type' => $cancelled ? 'success' : 'danger',
+                'text' => $cancelled
+                    ? 'Đã hủy đơn hàng và hoàn lại tồn kho.'
+                    : 'Chỉ có thể hủy đơn đang chờ xác nhận của bạn.',
+            ];
+            header('Location: index.php?action=order-detail&id=' . $orderId);
         } catch (Throwable $exception) {
             error_log($exception->__toString());
-            header('Location: index.php?action=order-detail&id=' . $orderId . '&error=' . urlencode('Không thể hủy đơn lúc này.'));
+            $_SESSION['flash'] = [
+                'type' => 'danger',
+                'text' => 'Không thể hủy đơn lúc này.',
+            ];
+            header('Location: index.php?action=order-detail&id=' . $orderId);
         }
         exit;
     }
@@ -204,9 +216,12 @@ final class OrderController
             ? 'index.php?action=checkout'
             : 'views/cart.php';
 
-        $separator = str_contains($target, '?') ? '&' : '?';
+        $_SESSION['flash'] = [
+            'type' => 'danger',
+            'text' => $message,
+        ];
 
-        header('Location: ' . $target . $separator . 'error=' . urlencode($message));
+        header('Location: ' . $target);
         exit;
     }
 }
