@@ -101,3 +101,12 @@ $isProducts = str_ends_with($currentPath, '/products.php');
     </nav>
 </header>
 <main>
+<?php if (!empty($_SESSION['flash'])): ?>
+    <div class="container mt-3">
+        <div class="alert alert-<?= htmlspecialchars($_SESSION['flash']['type'], ENT_QUOTES, 'UTF-8') ?> alert-dismissible fade show" role="alert">
+            <?= htmlspecialchars($_SESSION['flash']['text'], ENT_QUOTES, 'UTF-8') ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+        </div>
+    </div>
+    <?php unset($_SESSION['flash']); ?>
+<?php endif; ?>

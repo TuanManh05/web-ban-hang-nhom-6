@@ -53,6 +53,9 @@ final class OrderController
             Cart::clear();
             unset($_SESSION['checkout_errors'], $_SESSION['checkout_old']);
 
+            // Đọc lại đơn hàng từ database (không dùng lại dữ liệu tạm trong request)
+            // để đảm bảo hoá đơn hiển thị luôn khớp với dữ liệu đã lưu.
+            $order = $this->orders->find($orderId);
             $orderCode = 'DH' . str_pad((string) $orderId, 6, '0', STR_PAD_LEFT);
             $pageTitle = 'Đặt hàng thành công';
             require __DIR__ . '/../views/order-success.php';
@@ -107,6 +110,35 @@ final class OrderController
         require __DIR__ . '/../views/admin/orders/detail.php';
     }
 
+    /**
+     * Hoá đơn cho khách hàng - chỉ xem được đơn hàng của chính mình
+     * (findForUser() đã lọc theo user_id, giống cơ chế của detail()).
+     */
+    public function invoice(): void
+    {
+        AuthMiddleware::requireLogin();
+        $order = $this->orders->findForUser(max(0, (int) ($_GET['id'] ?? 0)), (int) $_SESSION['user']['id']);
+        if (!$order) { http_response_code(404); }
+        $orderCode = $order ? 'DH' . str_pad((string) $order['id'], 6, '0', STR_PAD_LEFT) : '';
+        $backUrl = $order ? ('index.php?action=order-detail&id=' . $order['id']) : 'index.php?action=orders';
+        $pageTitle = 'Hóa đơn ' . $orderCode;
+        require __DIR__ . '/../views/orders/invoice.php';
+    }
+
+    /**
+     * Hoá đơn cho Admin - xem được mọi đơn hàng (find() không lọc theo user_id).
+     */
+    public function adminInvoice(): void
+    {
+        AuthMiddleware::requireAdmin();
+        $order = $this->orders->find(max(0, (int) ($_GET['id'] ?? 0)));
+        if (!$order) { http_response_code(404); }
+        $orderCode = $order ? 'DH' . str_pad((string) $order['id'], 6, '0', STR_PAD_LEFT) : '';
+        $backUrl = $order ? ('index.php?action=admin-order-detail&id=' . $order['id']) : 'index.php?action=admin-orders';
+        $pageTitle = 'Hóa đơn ' . $orderCode;
+        require __DIR__ . '/../views/orders/invoice.php';
+    }
+
     public function updateStatus(): void
     {
         AuthMiddleware::requireAdmin();
@@ -114,8 +146,11 @@ final class OrderController
         $this->verifyCsrf();
         $orderId = max(0, (int) ($_POST['order_id'] ?? 0));
         $updated = $this->orders->updateStatus($orderId, (string) ($_POST['status'] ?? ''));
-        $message = $updated ? 'Đã cập nhật trạng thái đơn hàng.' : 'Không thể cập nhật trạng thái đơn hàng.';
-        header('Location: index.php?action=admin-order-detail&id=' . $orderId . '&' . ($updated ? 'msg=' : 'error=') . urlencode($message));
+        $_SESSION['flash'] = [
+            'type' => $updated ? 'success' : 'danger',
+            'text' => $updated ? 'Đã cập nhật trạng thái đơn hàng.' : 'Không thể cập nhật trạng thái đơn hàng.',
+        ];
+        header('Location: index.php?action=admin-order-detail&id=' . $orderId);
         exit;
     }
 
@@ -127,11 +162,20 @@ final class OrderController
         $orderId = max(0, (int) ($_POST['order_id'] ?? 0));
         try {
             $cancelled = $this->orders->cancelForUser($orderId, (int) $_SESSION['user']['id']);
-            $message = $cancelled ? 'Đã hủy đơn hàng và hoàn lại tồn kho.' : 'Chỉ có thể hủy đơn đang chờ xác nhận của bạn.';
-            header('Location: index.php?action=order-detail&id=' . $orderId . '&' . ($cancelled ? 'msg=' : 'error=') . urlencode($message));
+            $_SESSION['flash'] = [
+                'type' => $cancelled ? 'success' : 'danger',
+                'text' => $cancelled
+                    ? 'Đã hủy đơn hàng và hoàn lại tồn kho.'
+                    : 'Chỉ có thể hủy đơn đang chờ xác nhận của bạn.',
+            ];
+            header('Location: index.php?action=order-detail&id=' . $orderId);
         } catch (Throwable $exception) {
             error_log($exception->__toString());
-            header('Location: index.php?action=order-detail&id=' . $orderId . '&error=' . urlencode('Không thể hủy đơn lúc này.'));
+            $_SESSION['flash'] = [
+                'type' => 'danger',
+                'text' => 'Không thể hủy đơn lúc này.',
+            ];
+            header('Location: index.php?action=order-detail&id=' . $orderId);
         }
         exit;
     }
@@ -172,9 +216,12 @@ final class OrderController
             ? 'index.php?action=checkout'
             : 'views/cart.php';
 
-        $separator = str_contains($target, '?') ? '&' : '?';
+        $_SESSION['flash'] = [
+            'type' => 'danger',
+            'text' => $message,
+        ];
 
-        header('Location: ' . $target . $separator . 'error=' . urlencode($message));
+        header('Location: ' . $target);
         exit;
     }
 }
